@@ -1,0 +1,20 @@
+_format_version: "3.0"
+
+services:
+  - name: auth-service
+    url: http://auth-service:8000
+    # url: http://localhost:8001
+    routes:
+      - name: auth-route
+        paths:
+          - /auth
+        strip_path: false
+
+  - name: ai-service
+    url: http://ai-service:8000
+    # url: http://localhost:8000
+    routes:
+      - name: ai-route
+        paths:
+          - /ai
+        strip_path: false
