@@ -46,6 +46,8 @@ app.add_middleware(
 SECRET_KEY = os.getenv("SECRET_KEY", "hiep-tran-thanh-mieu")
 GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" # Replace with actual client ID
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 
+REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 # Pydantic models
 class LoginRequest(BaseModel):
@@ -56,6 +58,8 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
+    expires_at: int 
     token_type: str = "bearer"
     
 class RefreshRequest(BaseModel):
@@ -83,10 +87,26 @@ def get_db():
     finally:
         db.close()
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=24)
-    to_encode.update({"exp": expire})
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({
+        "exp": expire,
+        "type": "access"
+    })
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256"), expire
+
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({
+        "exp": expire,
+        "type": "refresh"
+    })
     return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -128,8 +148,15 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider")
 
-    token = create_access_token({"sub": user.email, "provider": user.provider})
-    return {"access_token": token}
+    access_token, access_expire = create_access_token({"sub": user.email, "provider": user.provider})
+    refresh_token = create_refresh_token({"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_at": int(access_expire.timestamp() * 1000),  # milliseconds
+        "token_type": "bearer"
+    }
 
 @app.get("/auth/verify")
 def verify_token(token: str):
@@ -157,29 +184,37 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": user.email, "provider": "email"})
-    return {"access_token": token}
+    access_token, access_expire = create_access_token({"sub": user.email, "provider": "email"})
+    refresh_token = create_refresh_token({"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_at": int(access_expire.timestamp() * 1000),
+        "token_type": "bearer"
+    }
     
 @app.post("/auth/refresh", response_model=TokenResponse)
 async def refresh_token(request: RefreshRequest):
     try:
         payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
+        
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid refresh token type")
 
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    new_access_token, access_expire = create_access_token(
-        {"sub": username},
-        timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+    new_access_token, access_expire = create_access_token({"sub": username})
 
     return {
         "access_token": new_access_token,
-        "refresh_token": request.refresh_token,
+        "refresh_token": request.refresh_token,  
         "expires_at": int(access_expire.timestamp() * 1000),
+        "token_type": "bearer"
     }
 
 @app.get("/auth/me", response_model=UserResponse)
