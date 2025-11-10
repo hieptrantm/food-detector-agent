@@ -1,0 +1,45 @@
+.sidebar {
+  width: 200px;
+  background: linear-gradient(180deg, #7c8bde 0%, #6b7dd9 100%);
+  color: white;
+  transition: width 0.3s ease, transform 0.3s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar-header {
+  padding: 2rem 1rem;
+}
+
+.sidebar-date {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  display: block;
+}
+
+.sidebar.collapsed .sidebar-date {
+  display: none;
+}
+
+.collapse-btn {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

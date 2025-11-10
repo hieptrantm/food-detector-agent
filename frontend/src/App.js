@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import Navbarr from './components/navbar/navbar';
+import Sidebar from './components/sidebar/sidebar';
+import ImageUpload from './components/imageUpload/imageUpload';
+import AuthProvider from './service/auth/authProvider';
 
 function App() {
   const [email, setEmail] = useState('');
@@ -9,6 +13,29 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  const checkMobile = () => {
+    const mobile = window.innerWidth <= 768;
+    setIsMobile(mobile);
+    if (mobile) {
+      setSidebarCollapsed(false);
+    }
+  };
+  
+  useEffect(() => {
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -77,150 +104,21 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      {/* Header */}
-      <header className="app-header">
-        <div className="header-content">
-          <div className="logo">
-            <span className="logo-icon"></span>
-            <h1 className="app-title">Food Detection App</h1>
-          </div>
-          
-          {token && (
-            <div className="avatar-wrapper">
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className={`avatar-button ${showMenu ? 'active' : ''}`}
-              >
-                👤
-              </button>
-              
-              {showMenu && (
-                <div className="dropdown-menu">
-                  <div className="dropdown-header">
-                    Đã đăng nhập
-                  </div>
-                  <button onClick={handleLogout} className="logout-button">
-                    🚪 Đăng xuất
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
+    <AuthProvider>
+      <div className="app-container">
+        {/* Header */}
+        <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
-      {/* Main Content */}
-      <main className="main-content">
-        {!token ? (
-          <div className="login-container">
-            <div className="login-section">
-              <div className="login-header">
-                <div className="logo-icon"></div>
-                <h2 className="login-title">Đăng nhập</h2>
-                <p className="login-subtitle">Đăng nhập để sử dụng dịch vụ phát hiện spam</p>
-              </div>
-              
-              <div className="login-form">
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    placeholder="example@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                {/* <div className="form-group">
-                  <label className="form-label"></label>
-                  <select 
-                    value={provider} 
-                    onChange={(e) => setProvider(e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="google">Google</option>
-                  </select>
-                </div> */}
-                
-                <button 
-                  onClick={handleLogin}
-                  disabled={loading}
-                  className="submit-button"
-                >
-                  {loading ? 'Đang xử lý...' : 'Đăng nhập'}
-                </button>
-              </div>
-            </div>
+        {/* Main Content */}
+        <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
+          <Navbarr />
+          <div className="content-area">
+            <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
+            THE RECIPES ARE HERE 
           </div>
-        ) : (
-          <div className="main-section">
-            <div className="detect-section">
-              <div className="detect-header">
-                <h2 className="detect-title">AI Spam Detection</h2>
-                <p className="detect-subtitle">Nhập văn bản để kiểm tra spam với độ chính xác cao</p>
-              </div>
-              
-              <div className="detect-form">
-                <div className="form-group">
-                  <label className="form-label">Văn bản cần kiểm tra</label>
-                  <textarea
-                    placeholder="Nhập hoặc dán văn bản cần kiểm tra spam tại đây..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    className="form-textarea"
-                  />
-                </div>
-                
-                <button 
-                  onClick={handleDetect}
-                  disabled={loading}
-                  className="detect-button"
-                >
-                  {loading ? (
-                    <>
-                      <div className="spinner"></div>
-                      Đang phát hiện...
-                    </>
-                  ) : (
-                    <>
-                      Phát hiện Spam
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              {result && (
-                <div className={`result ${result.is_spam ? 'spam' : 'safe'}`}>
-                  <h3 className="result-title">
-                    Kết quả phân tích
-                  </h3>
-                  <div className="result-content">
-                    <div className="result-item">
-                      <span className="result-label">Loại:</span>
-                      <span className="result-value">{result.category}</span>
-                    </div>
-                    <div className="result-item">
-                      <span className="result-label">Spam:</span>
-                      <span className={`result-value ${result.is_spam ? 'spam-text' : 'safe-text'}`}>
-                        {result.is_spam ? '⚠️ CÓ' : '✅ KHÔNG'}
-                      </span>
-                    </div>
-                    <div className="result-item">
-                      <span className="result-label">Độ tin cậy:</span>
-                      <span className="result-value confidence-text">
-                        {(result.confidence * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+        </div>
+      </div>
+    </AuthProvider>
   );
 }
 
