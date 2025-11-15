@@ -1,0 +1,1 @@
+YOLO_MODEL_DETECTOR = "uet-ingredient-detector-dwfkr/1"

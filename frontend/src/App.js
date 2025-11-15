@@ -66,10 +66,10 @@ function App() {
   const handleDetect = async (e) => {
     e.preventDefault();
     
-    if (!token) {
-      alert('Vui lòng đăng nhập trước!');
-      return;
-    }
+    // if (!token) {
+    //   alert('Vui lòng đăng nhập trước!');
+    //   return;
+    // }
     
     setLoading(true);
     
@@ -85,6 +85,44 @@ function App() {
       
       const data = await response.json();
       
+      if (response.ok) {
+        setResult(data);
+      } else {
+        alert('Phát hiện thất bại: ' + data.detail);
+      }
+    } catch (error) {
+      alert('Lỗi kết nối: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageDetect = async () => {
+    // if (!token) {
+    //   alert('Vui lòng đăng nhập trước!');
+    //   return;
+    // }
+
+    if (!uploadedImage) {
+      alert('Vui lòng chọn ảnh trước!');
+      return;
+    }
+
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/ai/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ image: uploadedImage })
+      });
+
+      const data = await response.json();
+
       if (response.ok) {
         setResult(data);
       } else {
@@ -113,7 +151,18 @@ function App() {
         <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
           <Navbarr />
           <div className="content-area">
-            <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
+            <ImageUpload 
+              image={uploadedImage} 
+              onImageChange={setUploadedImage}
+              onSend={handleImageDetect}
+              isLoading={loading}
+            />
+            {result && (
+              <div className="detection-result">
+                <h2>Kết quả phát hiện:</h2>
+                <pre>{JSON.stringify(result, null, 2)}</pre>
+              </div>
+            )}
             THE RECIPES ARE HERE 
           </div>
         </div>
