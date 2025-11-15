@@ -97,3 +97,60 @@ export function useAuthLogoutService() {
     setTokensInfo(null);
   }, []);
 }
+
+export function useAuthConfirmEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/email/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email confirmation failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthConfirmNewEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/email/confirm/new`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("New email confirmation failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthGoogleLoginService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/google/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Google login failed");
+    const result = await res.json();
+
+    setTokensInfo({
+      token: result.access_token,
+      refreshToken: result.refresh_token,
+      tokenExpires: result.expires_at,
+    });
+
+    return result;
+  }, []);
+}
+
+export function useAuthResetPasswordService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/reset/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Password reset failed");
+    return res.json();
+  }, []);
+}

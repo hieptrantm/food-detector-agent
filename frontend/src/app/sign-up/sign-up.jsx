@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import "./sign-up.css";
+import GoogleAuth from "../../service/auth/googleAuth";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -137,14 +138,7 @@ const SignUp = () => {
         </div>
 
         <div className="social-login">
-          <button className="social-btn google-btn">
-            <span className="social-icon">G</span>
-            Đăng ký với Google
-          </button>
-          {/* <button className="social-btn facebook-btn">
-            <span className="social-icon">f</span>
-            Đăng ký với Facebook
-          </button> */}
+          <GoogleAuth />
         </div>
 
         <div className="auth-footer">

@@ -3,7 +3,6 @@ import './App.css';
 import Navbarr from './components/navbar/navbar';
 import Sidebar from './components/sidebar/sidebar';
 import ImageUpload from './components/imageUpload/imageUpload';
-import AuthProvider from './service/auth/authProvider';
 
 function App() {
   const [email, setEmail] = useState('');
@@ -104,21 +103,19 @@ function App() {
   };
 
   return (
-    <AuthProvider>
-      <div className="app-container">
-        {/* Header */}
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+    <div className="app-container">
+      {/* Header */}
+      <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
-        {/* Main Content */}
-        <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
-          <Navbarr />
-          <div className="content-area">
-            <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
-            THE RECIPES ARE HERE 
-          </div>
+      {/* Main Content */}
+      <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
+        <Navbarr />
+        <div className="content-area">
+          <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
+          THE RECIPES ARE HERE 
         </div>
       </div>
-    </AuthProvider>
+    </div>
   );
 }
 
