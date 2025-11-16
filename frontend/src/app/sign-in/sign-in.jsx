@@ -31,7 +31,7 @@ const SignIn = () => {
     });
   };
 
-  const { setUser } = useAuthActions();
+  const { setUser, refreshUser } = useAuthActions();
   const { setTokensInfo } = useAuthTokens();
   const fetchAuthLogin = useAuthLoginService();
 
@@ -57,6 +57,7 @@ const SignIn = () => {
         setUser(res.user);
       }
 
+      await refreshUser();
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);

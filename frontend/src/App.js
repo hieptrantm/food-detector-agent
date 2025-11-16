@@ -3,19 +3,19 @@ import './App.css';
 import Navbarr from './components/navbar/navbar';
 import Sidebar from './components/sidebar/sidebar';
 import ImageUpload from './components/imageUpload/imageUpload';
+import { useAuth } from './service/auth/useAuth.js';
 
 function App() {
-  const [email, setEmail] = useState('');
-  const [provider, setProvider] = useState('google');
   const [token, setToken] = useState('');
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  const { user, isLoaded } = useAuth();
   
   const checkMobile = () => {
     const mobile = window.innerWidth <= 768;
@@ -30,36 +30,10 @@ function App() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [isLoaded]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, provider })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        setToken(data.access_token);
-        alert('Đăng nhập thành công!');
-      } else {
-        alert('Đăng nhập thất bại!');
-      }
-    } catch (error) {
-      alert('Lỗi kết nối: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDetect = async (e) => {
@@ -96,12 +70,6 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setToken('');
-    setResult(null);
-    setShowMenu(false);
-  };
-
   return (
     <div className="app-container">
       {/* Header */}
@@ -109,7 +77,7 @@ function App() {
 
       {/* Main Content */}
       <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
-        <Navbarr />
+        <Navbarr user={user} isLoaded={isLoaded}/>
         <div className="content-area">
           <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
           THE RECIPES ARE HERE 

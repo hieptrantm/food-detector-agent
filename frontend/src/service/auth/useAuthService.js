@@ -75,7 +75,10 @@ export function useAuthSignUpService() {
 export function useAuthGetMeService() {
   return useCallback(async () => {
     const res = await fetchWithAuth(`/auth/me`);
-    if (!res.ok) throw new Error("Failed to fetch user");
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to fetch user: ${res.status} ${text}`);
+    }
     return res.json();
   }, []);
 }
@@ -143,14 +146,71 @@ export function useAuthGoogleLoginService() {
   }, []);
 }
 
-export function useAuthResetPasswordService() {
+export function useAuthForgotPassword() {
   return useCallback(async (data) => {
-    const res = await fetch(`/auth/reset/password`, {
+    const res = await fetch(`/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error("Forgot password request failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthSetPasswordService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/set-password`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
     if (!res.ok) throw new Error("Password reset failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthRequestPasswordChangeService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/request-set-password-email`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Set password failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthVerifyEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/verify-email`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email verification failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthRequestEmailVerificationService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/send-verification`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email verification request failed");
+    return res.json();
+  }, []);
+}
+
+export function useTestEmail() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/test-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Test email sending failed");
     return res.json();
   }, []);
 }

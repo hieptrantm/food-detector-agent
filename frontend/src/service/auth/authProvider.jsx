@@ -7,7 +7,10 @@ import {
   AuthTokensContext,
 } from "./authContext";
 import useFetch from "./useFetch.js";
-import { getTokensInfo, setTokensInfo as setTokensInfoToStorage } from "./token.js";
+import {
+  getTokensInfo,
+  setTokensInfo as setTokensInfoToStorage,
+} from "./token.js";
 
 // enum HTTP_CODES_ENUM {
 //   OK = 200,
@@ -41,7 +44,7 @@ function AuthProvider(props) {
     const tokens = getTokensInfo();
 
     if (tokens?.token) {
-      await fetchBase('/auth/logout', {
+      await fetchBase("/auth/logout", {
         method: "POST",
       });
     }
@@ -53,7 +56,7 @@ function AuthProvider(props) {
 
     try {
       if (tokens?.token) {
-        const response = await fetchBase('/auth/me', {
+        const response = await fetchBase("/auth/me", {
           method: "GET",
         });
 
@@ -68,6 +71,25 @@ function AuthProvider(props) {
       }
     } finally {
       setIsLoaded(true);
+    }
+  }, [fetchBase, logOut]);
+
+  const refreshUser = useCallback(async () => {
+    const tokens = getTokensInfo();
+    if (!tokens?.token) return;
+
+    try {
+      const response = await fetchBase("/auth/me", { method: "GET" });
+      if (response.status === 401) {
+        logOut();
+        return;
+      }
+
+      const data = await response.json();
+      console.log("User refreshed:", data);
+      setUser(data);
+    } catch (err) {
+      console.error("Failed to refresh user:", err);
     }
   }, [fetchBase, logOut]);
 
@@ -87,8 +109,9 @@ function AuthProvider(props) {
     () => ({
       setUser,
       logOut,
+      refreshUser,
     }),
-    [logOut]
+    [logOut, refreshUser]
   );
 
   const contextTokensValue = useMemo(

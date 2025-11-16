@@ -5,12 +5,14 @@ import { useAuthActions } from "./useAuth";
 import { useAuthTokens } from "./useAuth";
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function GoogleAuth() {
-  const { setUser } = useAuthActions();
+  const { setUser, refreshUser } = useAuthActions();
   const { setTokensInfo } = useAuthTokens();
   const authGoogleLoginService = useAuthGoogleLoginService();
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const onSuccess = async (tokenResponse) => {
     console.log(tokenResponse);
@@ -27,7 +29,9 @@ export default function GoogleAuth() {
       tokenExpires: result.expires_at,
     });
     setUser(result.user);
+    await refreshUser();
     setIsLoading(false);
+    navigate("/");
   };
 
   return (
