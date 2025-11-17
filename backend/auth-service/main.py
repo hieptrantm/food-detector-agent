@@ -57,7 +57,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 SECRET_KEY = os.getenv("SECRET_KEY", "hiep-tran-thanh-mieu")
-GOOGLE_CLIENT_ID = '161535188264-vbh3m2u92ff98dhh8c1pvp6pd5hs1q52.apps.googleusercontent.com'
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "your-google-client-id")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Pydantic models
