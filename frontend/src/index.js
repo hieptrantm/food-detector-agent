@@ -10,6 +10,7 @@ import AuthProvider from './service/auth/authProvider';
 import GoogleAuthProvider from './service/auth/googleProvider';
 import SetPassword from './app/set-password/set-password';
 import VerifyEmail from './app/verify-email/verify-email';
+import ForgotPassword from './app/forgot-password/forgot-password'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -24,6 +25,7 @@ root.render(
             <Route path="/user-detail" element={<UserDetailPage />} />
             <Route path="/set-password" element={<SetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
             <Route path="*" element={<h1>404 Not Found</h1>} />
           </Routes>
         </Router>

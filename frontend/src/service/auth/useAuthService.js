@@ -166,7 +166,19 @@ export function useAuthSetPasswordService() {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Password reset failed");
-    return res.json();
+    return res;
+  }, []);
+}
+
+export function useAuthChangePasswordService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/change-password`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Password change failed");
+    return res;
   }, []);
 }
 
@@ -177,7 +189,7 @@ export function useAuthRequestPasswordChangeService() {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Set password failed");
-    return res.json();
+    return res;
   }, []);
 }
 
@@ -211,6 +223,6 @@ export function useTestEmail() {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Test email sending failed");
-    return res.json();
+    return res;
   }, []);
 }

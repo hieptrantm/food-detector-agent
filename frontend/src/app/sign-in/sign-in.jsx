@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthActions, useAuthTokens } from "../../service/auth/useAuth.js";
-import { useAuthLoginService } from "../../service/auth/useAuthService.js";
+import { useAuthActions, useAuthTokens } from "../../service/auth/useAuth";
+import { useAuthLoginService } from "../../service/auth/useAuthService";
+import { useAuthForgotPassword } from "../../service/auth/useAuthService";
 import "./sign-in.css";
 import GoogleAuth from "../../service/auth/googleAuth";
+import toast from "react-hot-toast";
 
 // Sign In Component
 const SignIn = () => {
@@ -34,6 +36,7 @@ const SignIn = () => {
   const { setUser, refreshUser } = useAuthActions();
   const { setTokensInfo } = useAuthTokens();
   const fetchAuthLogin = useAuthLoginService();
+  const fetchForgotPassword = useAuthForgotPassword();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +64,32 @@ const SignIn = () => {
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!");
+      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!");
+    }
+  };
+
+  const handleSubmitForgotPassword = async (e) => {
+    e.preventDefault();
+
+    try {
+      console.log("Forgot data:", formData);
+
+      const res = await fetchForgotPassword({
+        email: formData.email,
+      });
+
+      if (!res) {
+        console.log("Can't reach endpoint forgot password");
+      }
+
+      toast.success(
+        `Email reset mật khẩu đã được gửi đến email: ${formData.email}`
+      );
+
+      navigate("/");
+    } catch (error) {
+      console.error("Forgot password:", error);
+      toast.error("Vui lòng kiểm tra lại thông tin!");
     }
   };
 
@@ -107,7 +135,12 @@ const SignIn = () => {
               <input type="checkbox" />
               <span>Ghi nhớ đăng nhập</span>
             </label>
-            <button className="forgot-password">Quên mật khẩu?</button>
+            <button
+              className="forgot-password"
+              onClick={handleSubmitForgotPassword}
+            >
+              Quên mật khẩu?
+            </button>
           </div>
 
           <button className="auth-submit-btn" onClick={handleSubmit}>

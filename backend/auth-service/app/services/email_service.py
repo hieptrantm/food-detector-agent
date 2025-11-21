@@ -126,7 +126,7 @@ def send_reset_password_email(email: str, username: str, token: str):
         print("Warning: SENDGRID_API_KEY not set, skipping email")
         return False
     
-    reset_password_link = f"{FRONTEND_URL}/set-password?token={token}"
+    reset_password_link = f"{FRONTEND_URL}/forgot-password?token={token}"
     
     message = Mail(
         from_email=FROM_EMAIL,

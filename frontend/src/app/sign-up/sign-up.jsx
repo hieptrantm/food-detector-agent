@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import "./sign-up.css";
 import GoogleAuth from "../../service/auth/googleAuth";
+import toast from "react-hot-toast";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -78,11 +79,11 @@ const SignUp = () => {
       const data = await response.json();
       Cookies.set("access_token", data.access_token, { expires: 1 });
 
-      alert("Đăng ký thành công!");
+      toast.success("Đăng ký thành công!");
       navigate("/");
     } catch (error) {
       console.error("Registration error:", error);
-      alert(error.message || "Đăng ký thất bại!");
+      toast.error(error.message || "Đăng ký thất bại!");
     }
   };
 

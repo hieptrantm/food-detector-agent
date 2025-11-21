@@ -233,7 +233,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
 @router.post("/request-set-password-email")
-async def request_set_password_email(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def request_set_password_email(current_user: User = Depends(get_current_user)):
     if current_user.password_hash:
         raise HTTPException(status_code=400, detail="User already has a password. Use change-password endpoint instead.")
     
@@ -247,7 +247,7 @@ async def request_set_password_email(current_user: User = Depends(get_current_us
 async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
-        if payload.get("type") not in ["email_verification", "reset_password"]:
+        if payload.get("type") not in ["reset_password"]:
             raise HTTPException(status_code=400, detail="Invalid token type")
         email = payload.get("sub")
         if not email:
@@ -267,6 +267,28 @@ async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db
     user.provider = 'google'
     db.commit()
     return {"message": "Password set successfully. You can now login with email and password.", "has_password": True}
+
+@router.patch("/change-password")
+async def change_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") not in ["reset_password"]:
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=400, detail="Invalid token")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.password_hash = hash_password(request.password)
+    db.commit()
+    return {"message": "Password change successfully. You can now login again"}
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):

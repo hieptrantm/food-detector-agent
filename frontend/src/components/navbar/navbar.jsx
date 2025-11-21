@@ -1,12 +1,12 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
 import "./navbar.css";
 import { useNavigate } from "react-router-dom";
 import { useAuthActions } from "../../service/auth/useAuth";
 import { useTestEmail } from "../../service/auth/useAuthService";
 import { useAuthRequestPasswordChangeService } from "../../service/auth/useAuthService";
 import { useAuthRequestEmailVerificationService } from "../../service/auth/useAuthService";
+import toast from "react-hot-toast";
 
 const Navbarr = ({ onMenuClick, user, isLoaded }) => {
   const { logOut } = useAuthActions();
@@ -34,12 +34,12 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
         const res = await sendLinkEmailVerification({
           email: user.email,
         });
-        alert("Verification email sent!");
+        toast.success("Verification email sent!");
       } catch (error) {
-        alert("Failed to send verification email: " + error.message);
+        toast.error("Failed to send verification email: " + error.message);
       }
     } else {
-      alert("User email not available");
+      toast.error("User email not available");
     }
   };
 
@@ -47,11 +47,15 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
     if (user && user.email) {
       try {
         const res = await sendLinkPassword();
+        if (!res.ok) {
+          toast.error("Password set email fault");
+        }
+        toast.success("Password set email sent!");
       } catch (error) {
-        console.error("Error setting password:", error);
+        toast.error("Error setting password:", error);
       }
     } else {
-      alert("User email not available");
+      toast.error("User email not available");
     }
   };
 
@@ -59,12 +63,15 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
     if (user && user.email) {
       try {
         const res = await sendLinkPassword();
-        alert("Password reset email sent!");
+        if (!res.ok) {
+          toast.error("Password reset email fault");
+        }
+        toast.success("Password reset email sent!");
       } catch (error) {
-        alert("Failed to send password reset email: " + error.message);
+        toast.error("Failed to send password reset email: " + error.message);
       }
     } else {
-      alert("User email not available");
+      toast.error("User email not available");
     }
   };
 
@@ -75,12 +82,15 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
           email: user.email,
           username: user.username,
         });
-        alert(res.message);
+        if (!res.ok) {
+          toast.error("Test email failed");
+        }
+        toast.success(res.message);
       } catch (error) {
-        alert("Failed to send test email: " + error.message);
+        toast.error("Failed to send test email: " + error.message);
       }
     } else {
-      alert("User email not available");
+      toast.error("User email not available");
     }
   };
 
