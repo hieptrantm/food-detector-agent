@@ -10,6 +10,20 @@ import numpy as np
 from inference import get_model
 import supervision as sv
 from config import YOLO_MODEL_DETECTOR
+import os
+from dotenv import load_dotenv
+
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Create a logger
+logger = logging.getLogger(__name__)
+
+# Load Model API key
+load_dotenv()
+api_key = os.getenv('ROBOFLOW_API_KEY')
+logger.info(f"API KEY LOADED: {api_key}")
+os.environ['ROBOFLOW_API_KEY'] = api_key
 
 app = FastAPI(title="AI Service")
 
