@@ -350,7 +350,7 @@ async def refresh_token(request: RefreshRequest):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    new_access_token, access_expire = create_access_token({"sub": user.email})
+    new_access_token, access_expire = create_access_token({"sub": username})
 
     return {
         "access_token": new_access_token,

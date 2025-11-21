@@ -108,41 +108,32 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setToken('');
-    setResult(null);
-    setShowMenu(false);
-  };
+  // const handleLogout = () => {
+  //   setToken('');
+  //   setResult(null);
+  //   setShowMenu(false);
+  // };
 
   return (
     <div className="app-container">
-      {/* Header */}
       <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
-      {/* Main Content */}
       <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
-        <Navbarr user={user} isLoaded={isLoaded}/>
+        <Navbarr user={user} isLoaded={isLoaded} />
         <div className="content-area">
-          <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
+          <ImageUpload 
+            image={uploadedImage} 
+            onImageChange={setUploadedImage}
+            onSend={handleImageDetect}
+            isLoading={loading}
+          />
+          {result && (
+            <div className="detection-result">
+              <h2>Kết quả phát hiện:</h2>
+              <pre>{JSON.stringify(result, null, 2)}</pre>
+            </div>
+          )}
           THE RECIPES ARE HERE 
-        {/* Main Content */}
-        <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
-          <Navbarr />
-          <div className="content-area">
-            <ImageUpload 
-              image={uploadedImage} 
-              onImageChange={setUploadedImage}
-              onSend={handleImageDetect}
-              isLoading={loading}
-            />
-            {result && (
-              <div className="detection-result">
-                <h2>Kết quả phát hiện:</h2>
-                <pre>{JSON.stringify(result, null, 2)}</pre>
-              </div>
-            )}
-            THE RECIPES ARE HERE 
-          </div>
         </div>
       </div>
     </div>
