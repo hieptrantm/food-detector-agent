@@ -6,8 +6,10 @@ CREATE TABLE users (
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
   password_hash TEXT,
+  email_verified BOOLEAN DEFAULT FALSE,
   provider VARCHAR(50) NOT NULL,
   provider_id VARCHAR(100),
+  last_login TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (provider, provider_id)
 );

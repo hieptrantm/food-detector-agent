@@ -75,7 +75,10 @@ export function useAuthSignUpService() {
 export function useAuthGetMeService() {
   return useCallback(async () => {
     const res = await fetchWithAuth(`/auth/me`);
-    if (!res.ok) throw new Error("Failed to fetch user");
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to fetch user: ${res.status} ${text}`);
+    }
     return res.json();
   }, []);
 }
@@ -95,5 +98,119 @@ export function useAuthLogoutService() {
   return useCallback(async () => {
     await fetchWithAuth(`/auth/logout`, { method: "POST" });
     setTokensInfo(null);
+  }, []);
+}
+
+export function useAuthConfirmEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/email/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email confirmation failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthConfirmNewEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/email/confirm/new`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("New email confirmation failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthGoogleLoginService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/google/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Google login failed");
+    const result = await res.json();
+
+    setTokensInfo({
+      token: result.access_token,
+      refreshToken: result.refresh_token,
+      tokenExpires: result.expires_at,
+    });
+
+    return result;
+  }, []);
+}
+
+export function useAuthForgotPassword() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Forgot password request failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthSetPasswordService() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/set-password`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Password reset failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthRequestPasswordChangeService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/request-set-password-email`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Set password failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthVerifyEmailService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/verify-email`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email verification failed");
+    return res.json();
+  }, []);
+}
+
+export function useAuthRequestEmailVerificationService() {
+  return useCallback(async (data) => {
+    const res = await fetchWithAuth(`/auth/send-verification`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Email verification request failed");
+    return res.json();
+  }, []);
+}
+
+export function useTestEmail() {
+  return useCallback(async (data) => {
+    const res = await fetch(`/auth/test-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Test email sending failed");
+    return res.json();
   }, []);
 }

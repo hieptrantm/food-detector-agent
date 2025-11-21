@@ -4,44 +4,65 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import "./sign-up.css";
+import GoogleAuth from "../../service/auth/googleAuth";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
-    username: "",
+    fullName: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
-  const handleExit = () => {
-    navigate(-1);
-  };
-
-  const handleSignIn = () => {
-    navigate("/sign-in");
-  };
+  const handleExit = () => navigate(-1);
+  const handleSignIn = () => navigate("/sign-in");
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setErrors({
+      ...errors,
+      [e.target.name]: "",
+    });
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    if (password.length < 8) return "Mật khẩu phải ít nhất 8 ký tự";
+    if (!/[A-Za-z]/.test(password))
+      return "Mật khẩu phải chứa ít nhất một chữ cái";
+    if (!/\d/.test(password)) return "Mật khẩu phải chứa ít nhất một số";
+    return "";
   };
 
   const handleSubmit = async () => {
-    if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu không khớp!");
+    const newErrors = {};
+    if (!formData.fullName)
+      newErrors.fullName = "Họ và tên không được để trống";
+    if (!validateEmail(formData.email)) newErrors.email = "Email không hợp lệ";
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) newErrors.password = passwordError;
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Mật khẩu không khớp";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
       const response = await fetch("/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: formData.fullName,
           email: formData.email,
@@ -55,7 +76,6 @@ const SignUp = () => {
       }
 
       const data = await response.json();
-
       Cookies.set("access_token", data.access_token, { expires: 1 });
 
       alert("Đăng ký thành công!");
@@ -89,6 +109,7 @@ const SignUp = () => {
               onChange={handleChange}
               placeholder="Nhập họ và tên"
             />
+            {errors.fullName && <p className="error">{errors.fullName}</p>}
           </div>
 
           <div className="form-group">
@@ -101,6 +122,7 @@ const SignUp = () => {
               onChange={handleChange}
               placeholder="Nhập email của bạn"
             />
+            {errors.email && <p className="error">{errors.email}</p>}
           </div>
 
           <div className="form-group">
@@ -113,6 +135,7 @@ const SignUp = () => {
               onChange={handleChange}
               placeholder="Tạo mật khẩu (tối thiểu 8 ký tự)"
             />
+            {errors.password && <p className="error">{errors.password}</p>}
           </div>
 
           <div className="form-group">
@@ -125,6 +148,9 @@ const SignUp = () => {
               onChange={handleChange}
               placeholder="Nhập lại mật khẩu"
             />
+            {errors.confirmPassword && (
+              <p className="error">{errors.confirmPassword}</p>
+            )}
           </div>
 
           <button className="auth-submit-btn" onClick={handleSubmit}>
@@ -137,14 +163,7 @@ const SignUp = () => {
         </div>
 
         <div className="social-login">
-          <button className="social-btn google-btn">
-            <span className="social-icon">G</span>
-            Đăng ký với Google
-          </button>
-          {/* <button className="social-btn facebook-btn">
-            <span className="social-icon">f</span>
-            Đăng ký với Facebook
-          </button> */}
+          <GoogleAuth />
         </div>
 
         <div className="auth-footer">

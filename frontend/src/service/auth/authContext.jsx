@@ -22,6 +22,7 @@ export const AuthContext = createContext({
 export const AuthActionsContext = createContext({
   setUser: () => {},
   logOut: async () => {},
+  refreshUser: async () => {},
 });
 
 export const AuthTokensContext = createContext({

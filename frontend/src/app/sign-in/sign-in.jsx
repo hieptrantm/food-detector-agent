@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthActions, useAuthTokens } from "../../service/auth/useAuth.js";
 import { useAuthLoginService } from "../../service/auth/useAuthService.js";
 import "./sign-in.css";
+import GoogleAuth from "../../service/auth/googleAuth";
 
 // Sign In Component
 const SignIn = () => {
@@ -30,7 +31,7 @@ const SignIn = () => {
     });
   };
 
-  const { setUser } = useAuthActions();
+  const { setUser, refreshUser } = useAuthActions();
   const { setTokensInfo } = useAuthTokens();
   const fetchAuthLogin = useAuthLoginService();
 
@@ -56,6 +57,7 @@ const SignIn = () => {
         setUser(res.user);
       }
 
+      await refreshUser();
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
@@ -118,14 +120,7 @@ const SignIn = () => {
         </div>
 
         <div className="social-login">
-          <button className="social-btn google-btn">
-            <span className="social-icon">G</span>
-            Đăng nhập với Google
-          </button>
-          {/* <button className="social-btn facebook-btn">
-            <span className="social-icon">f</span>
-            Đăng nhập với Facebook
-          </button> */}
+          <GoogleAuth />
         </div>
 
         <div className="auth-footer">
