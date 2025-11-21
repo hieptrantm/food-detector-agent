@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 load_dotenv()
 
-
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "hiep-tran-thanh-mieu")
 if not SENDGRID_API_KEY:
     print("Warning: SENDGRID_API_KEY not set, skipping email, emails will not be sent")
 FROM_EMAIL = "quochaitnpl04@gmail.com"

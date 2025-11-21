@@ -160,6 +160,17 @@ def generate_reset_password_token(email: str):
     }
     return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
 
+
+def send_reset_password_email(email: str, username: str, token: str):
+    """Send password reset email via email_service"""
+    email_sent = email_service.send_reset_password_email(email, username, token)
+    if not email_sent:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send reset password email"
+        )
+    return email_sent
+
 def generate_verification_token(email: str):
     expire = datetime.utcnow() + timedelta(hours=1) 
     to_encode = {
