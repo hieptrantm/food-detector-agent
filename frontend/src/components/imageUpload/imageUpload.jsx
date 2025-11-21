@@ -2,10 +2,33 @@
 
 import './image.css';
 
-const ImageUpload = ({ image, onImageChange }) => {
+const ImageUpload = ({ image, onImageChange, onSend, isLoading }) => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onImageChange(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  const handleDragLeave = (e) => {
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => {
         onImageChange(reader.result);
@@ -23,7 +46,13 @@ const ImageUpload = ({ image, onImageChange }) => {
         id="image-input"
         className="image-input"
       />
-      <label htmlFor="image-input" className="image-upload-area">
+      <label 
+        htmlFor="image-input" 
+        className="image-upload-area"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {image ? (
           <img src={image} alt="Uploaded" className="uploaded-image" />
         ) : (
@@ -37,7 +66,13 @@ const ImageUpload = ({ image, onImageChange }) => {
         )}
       </label>
       <div className="analyze-button-container">
-        <button className="analyze-btn">SEND</button>
+        <button 
+          className="analyze-btn" 
+          onClick={onSend} 
+          disabled={!image || isLoading}
+        >
+          {isLoading ? 'DETECTING...' : 'SEND'}
+        </button>
       </div>
     </div>
   );

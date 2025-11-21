@@ -1,6 +1,8 @@
 # version: '3.8'
 
 services:
+
+  # postgres define
   postgres:
     image: postgres:15-alpine
     environment:
@@ -15,6 +17,7 @@ services:
     networks:
       - app-network
 
+  # auth service define run
   auth-service:
     build: ./auth-service
     environment:
@@ -25,6 +28,7 @@ services:
     networks:
       - app-network
 
+  # ai-service define run
   ai-service:
     build: ./ai-service
     depends_on:
