@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models import User
+from app.models import User, AuthProvider
+
 
 class UserRepository:
     def __init__(self, db: Session):
@@ -8,11 +9,17 @@ class UserRepository:
     def get_by_email(self, email: str):
         return self.db.query(User).filter(User.email == email).first()
 
+
     def get_by_provider(self, provider: str, provider_id: str):
-        return self.db.query(User).filter(
-            User.provider == provider,
-            User.provider_id == provider_id
-        ).first()
+        return (
+            self.db.query(User)
+            .join(AuthProvider)
+            .filter(
+                AuthProvider.provider == provider,
+                AuthProvider.provider_id == provider_id
+            )
+            .first()
+        )
 
     def create(self, user_data: dict):
         user = User(**user_data)

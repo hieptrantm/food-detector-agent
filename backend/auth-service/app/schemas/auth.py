@@ -26,7 +26,8 @@ class UserResponse(BaseModel):
     username: str
     email: str
     email_verified: bool
-    provider: str
+    provider: Optional[str]
+    providers: list[str]
     has_password: bool
 
 class GoogleLoginRequest(BaseModel):

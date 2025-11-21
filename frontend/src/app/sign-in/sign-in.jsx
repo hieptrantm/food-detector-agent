@@ -131,10 +131,10 @@ const SignIn = () => {
           </div>
 
           <div className="form-options">
-            <label className="remember-me">
+            {/* <label className="remember-me">
               <input type="checkbox" />
               <span>Ghi nhớ đăng nhập</span>
-            </label>
+            </label> */}
             <button
               className="forgot-password"
               onClick={handleSubmitForgotPassword}

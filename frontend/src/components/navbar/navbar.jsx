@@ -135,6 +135,10 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
                     <strong>Provider:</strong>{" "}
                     <span id="provider">{user.provider}</span>
                   </div>
+                  <div className="detail-row">
+                    <strong>Providers:</strong>{" "}
+                    <span id="provider">{user.providers?.join(", ")}</span>
+                  </div>
 
                   {user.email_verified === true ? null : (
                     <button

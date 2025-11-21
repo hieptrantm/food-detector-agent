@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import jwt
 
 from app.schemas.auth import *
-from app.models import User
+from app.models import User, AuthProvider
 from app.services import *
 
 from app.database import get_db
@@ -24,28 +24,55 @@ def root():
 @router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     if request.provider == "email":
-        user = db.query(User).filter(User.email == request.email, User.provider == "email").first()
-        if not user:
+        # Find user with email provider
+        auth_provider = db.query(AuthProvider).filter(
+            AuthProvider.provider == "email",
+            AuthProvider.provider_id == request.email
+        ).first()
+        
+        if not auth_provider:
             raise HTTPException(status_code=401, detail="User not found")
+        
+        user = db.query(User).filter(User.id == auth_provider.user_id).first()
+        if not user or not user.password_hash:
+            raise HTTPException(status_code=401, detail="User not found")
+        
         if not verify_password(request.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid password")
 
     elif request.provider == "google":
         if not request.provider_id:
             raise HTTPException(status_code=400, detail="Missing provider_id for Google login")
-        user = db.query(User).filter(User.provider == "google", User.provider_id == request.provider_id).first()
-        if not user:
+        
+        auth_provider = db.query(AuthProvider).filter(
+            AuthProvider.provider == "google",
+            AuthProvider.provider_id == request.provider_id
+        ).first()
+        
+        if not auth_provider:
+            # Create new user and auth provider
             user = User(
                 username=request.email.split("@")[0],
                 email=request.email,
-                provider="google",
-                provider_id=request.provider_id,
             )
             db.add(user)
+            db.flush()  # Get user.id before creating auth_provider
+            
+            auth_provider = AuthProvider(
+                user_id=user.id,
+                provider="google",
+                provider_id=request.provider_id
+            )
+            db.add(auth_provider)
             db.commit()
             db.refresh(user)
+        else:
+            user = db.query(User).filter(User.id == auth_provider.user_id).first()
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider")
+
+    user.last_login = datetime.utcnow()
+    db.commit()
 
     access_token, access_expire = create_access_token({"sub": user.email})
     refresh_token = create_refresh_token({"sub": user.email})
@@ -123,10 +150,18 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
     user = User(
         username=request.username,
         email=request.email,
-        password_hash=hash_password(request.password),
-        provider="email"
+        password_hash=hash_password(request.password)
     )
     db.add(user)
+    db.flush()  # Get user.id
+    
+    # Create email auth provider
+    auth_provider = AuthProvider(
+        user_id=user.id,
+        provider="email",
+        provider_id=request.email
+    )
+    db.add(auth_provider)
     db.commit()
     db.refresh(user)
 
@@ -169,11 +204,17 @@ async def get_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get all auth providers for this user
+    auth_providers = db.query(AuthProvider).filter(AuthProvider.user_id == db_user.id).all()
+    providers = [ap.provider for ap in auth_providers]
+    
     return {
         "username": db_user.username,
         "email": db_user.email,
         "email_verified": db_user.email_verified,
-        "provider": db_user.provider,
+        "provider": providers[0] if providers else None,  # Primary provider
+        "providers": providers,  # All linked providers
         "has_password": db_user.password_hash is not None
     }
 
@@ -196,24 +237,49 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         if not email:
             raise HTTPException(status_code=400, detail="Email not provided by Google")
         
-        user = db.query(User).filter((User.email == email) | (User.provider_id == google_user_id)).first()
+        # Check if Google provider exists
+        auth_provider = db.query(AuthProvider).filter(
+            AuthProvider.provider == "google",
+            AuthProvider.provider_id == google_user_id
+        ).first()
         
-        if user:
-            if not user.provider_id:
-                user.provider_id = google_user_id
+        if auth_provider:
+            # Existing user with Google login
+            user = db.query(User).filter(User.id == auth_provider.user_id).first()
             if not user.email_verified and email_verified:
                 user.email_verified = True
             user.last_login = datetime.utcnow()
         else:
-            user = User(
-                email=email,
-                provider_id=google_user_id,
-                username=name,
-                email_verified=email_verified,
-                provider='google',
-                last_login=datetime.utcnow()
-            )
-            db.add(user)
+            # Check if user exists with this email (account linking)
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                # Link Google account to existing user
+                auth_provider = AuthProvider(
+                    user_id=user.id,
+                    provider="google",
+                    provider_id=google_user_id
+                )
+                db.add(auth_provider)
+                if not user.email_verified and email_verified:
+                    user.email_verified = True
+                user.last_login = datetime.utcnow()
+            else:
+                # Create new user
+                user = User(
+                    email=email,
+                    username=name or email.split("@")[0],
+                    email_verified=email_verified,
+                    last_login=datetime.utcnow()
+                )
+                db.add(user)
+                db.flush()  # Get user.id
+                
+                auth_provider = AuthProvider(
+                    user_id=user.id,
+                    provider="google",
+                    provider_id=google_user_id
+                )
+                db.add(auth_provider)
         
         db.commit()
         db.refresh(user)
@@ -247,7 +313,7 @@ async def request_set_password_email(current_user: User = Depends(get_current_us
 async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
-        if payload.get("type") not in ["reset_password"]:
+        if payload.get("type") not in ["reset_password", "email_verification"]:
             raise HTTPException(status_code=400, detail="Invalid token type")
         email = payload.get("sub")
         if not email:
@@ -264,7 +330,21 @@ async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=400, detail="User already has a password. Use change-password endpoint instead.")
     
     user.password_hash = hash_password(request.password)
-    user.provider = 'google'
+    
+    # Add email auth provider if it doesn't exist lmao
+    email_provider = db.query(AuthProvider).filter(
+        AuthProvider.user_id == user.id,
+        AuthProvider.provider == "email"
+    ).first()
+    
+    if not email_provider:
+        auth_provider = AuthProvider(
+            user_id=user.id,
+            provider="email",
+            provider_id=user.email
+        )
+        db.add(auth_provider)
+    
     db.commit()
     return {"message": "Password set successfully. You can now login with email and password.", "has_password": True}
 
@@ -288,7 +368,7 @@ async def change_password(request: SetPasswordRequest, db: Session = Depends(get
     
     user.password_hash = hash_password(request.password)
     db.commit()
-    return {"message": "Password change successfully. You can now login again"}
+    return {"message": "Password changed successfully. You can now login again"}
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
