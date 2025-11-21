@@ -1,20 +1,15 @@
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, MailSettings, SandBoxMode
 import jwt
-from dotenv import load_dotenv
 import os
 from datetime import datetime, timedelta
 
-load_dotenv()
+from app.config import SENDGRID_API_KEY, SECRET_KEY
 
-
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-if not SENDGRID_API_KEY:
-    print("Warning: SENDGRID_API_KEY not set, skipping email, emails will not be sent")
 FROM_EMAIL = "quochaitnpl04@gmail.com"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-def generate_verification_token(email: str):
+def generate_verification_token_email(email: str):
     expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode = {
         "sub": email,

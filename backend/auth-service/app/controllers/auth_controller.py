@@ -1,0 +1,284 @@
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from datetime import datetime, timedelta
+import jwt
+
+from app.schemas.auth import *
+from app.models import User
+from app.services import *
+
+from app.database import get_db
+from app.config import GOOGLE_CLIENT_ID, SECRET_KEY
+
+if not GOOGLE_CLIENT_ID:
+    print("GOOGLE_CLIENT_ID not loaded, check config import or config file")
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.get("/")
+def root():
+    return {"service": "auth-service", "status": "running"}
+
+@router.post("/login", response_model=TokenResponse)
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    if request.provider == "email":
+        user = db.query(User).filter(User.email == request.email, User.provider == "email").first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        if not verify_password(request.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid password")
+
+    elif request.provider == "google":
+        if not request.provider_id:
+            raise HTTPException(status_code=400, detail="Missing provider_id for Google login")
+        user = db.query(User).filter(User.provider == "google", User.provider_id == request.provider_id).first()
+        if not user:
+            user = User(
+                username=request.email.split("@")[0],
+                email=request.email,
+                provider="google",
+                provider_id=request.provider_id,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported provider")
+
+    access_token, access_expire = create_access_token({"sub": user.email})
+    refresh_token = create_refresh_token({"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_at": int(access_expire.timestamp() * 1000),
+        "token_type": "bearer"
+    }
+
+@router.get("/verify")
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return {"valid": True, "email": payload.get("sub")}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@router.patch("/verify-email")
+def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "email_verification":
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=400, detail="Invalid token")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Verification link has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid verification token")
+    
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.email_verified:
+        return {
+            "message": "Email already verified",
+            "user": {"username": user.username, "email": user.email, "email_verified": True}
+        }
+    
+    user.email_verified = True
+    db.commit()
+    db.refresh(user)
+    
+    return {
+        "message": "Email verified successfully",
+        "user": {"username": user.username, "email": user.email, "email_verified": user.email_verified}
+    }
+
+@router.post("/send-verification")
+def send_verification(request: SendVerificationRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
+    
+    token = generate_verification_token_email(user.email)
+    email_sent = send_verification_email(user.email, user.username, token)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send verification email")
+    return {"message": "Verification email sent successfully"}
+
+@router.post("/register", response_model=TokenResponse)
+def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == request.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = User(
+        username=request.username,
+        email=request.email,
+        password_hash=hash_password(request.password),
+        provider="email"
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    access_token, access_expire = create_access_token({"sub": user.email})
+    refresh_token = create_refresh_token({"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_at": int(access_expire.timestamp() * 1000),
+        "token_type": "bearer"
+    }
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms="HS256")
+        email = payload.get("sub")
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token type")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_access_token, access_expire = create_access_token({"sub": user.email})
+    return {
+        "access_token": new_access_token,
+        "refresh_token": request.refresh_token,
+        "expires_at": int(access_expire.timestamp() * 1000),
+        "token_type": "bearer"
+    }
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "username": db_user.username,
+        "email": db_user.email,
+        "email_verified": db_user.email_verified,
+        "provider": db_user.provider,
+        "has_password": db_user.password_hash is not None
+    }
+
+@router.post("/logout")
+async def logout():
+    return {"message": "Logged out successfully"}
+
+@router.post("/google/login", response_model=TokenResponse)
+async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
+    try:
+        idinfo = id_token.verify_oauth2_token(request.id_token, requests.Request(), GOOGLE_CLIENT_ID)
+        if idinfo['aud'] != GOOGLE_CLIENT_ID:
+            raise HTTPException(status_code=401, detail="Invalid token audience")
+        
+        google_user_id = idinfo['sub']
+        email = idinfo.get('email')
+        email_verified = idinfo.get('email_verified', False)
+        name = idinfo.get('name', '')
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+        
+        user = db.query(User).filter((User.email == email) | (User.provider_id == google_user_id)).first()
+        
+        if user:
+            if not user.provider_id:
+                user.provider_id = google_user_id
+            if not user.email_verified and email_verified:
+                user.email_verified = True
+            user.last_login = datetime.utcnow()
+        else:
+            user = User(
+                email=email,
+                provider_id=google_user_id,
+                username=name,
+                email_verified=email_verified,
+                provider='google',
+                last_login=datetime.utcnow()
+            )
+            db.add(user)
+        
+        db.commit()
+        db.refresh(user)
+        
+        access_token, access_expire = create_access_token({"sub": user.email})
+        refresh_token = create_refresh_token({"sub": user.email})
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_at": int(access_expire.timestamp() * 1000),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+
+@router.post("/request-set-password-email")
+async def request_set_password_email(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.password_hash:
+        raise HTTPException(status_code=400, detail="User already has a password. Use change-password endpoint instead.")
+    
+    token = generate_verification_token_email(current_user.email)
+    email_sent = send_set_password_email(current_user.email, current_user.username, token)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send set password email")
+    return {"message": "Set password email sent successfully"}
+
+@router.patch("/set-password")
+async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") not in ["email_verification", "reset_password"]:
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=400, detail="Invalid token")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.password_hash:
+        raise HTTPException(status_code=400, detail="User already has a password. Use change-password endpoint instead.")
+    
+    user.password_hash = hash_password(request.password)
+    user.provider = 'google'
+    db.commit()
+    return {"message": "Password set successfully. You can now login with email and password.", "has_password": True}
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
+    if user and user.password_hash:
+        token = generate_reset_password_token(user.email)
+        send_reset_password_email(user.email, user.username, token)
+    return {"message": "If an account exists with this email, a password reset link has been sent."}
+
+@router.post("/test-email")
+def test_email(request: TestEmailRequest):
+    email_sent = send_test_email(request.email, request.username, "test-token")
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send test email")
+    return {"message": "Test email sent successfully"}
