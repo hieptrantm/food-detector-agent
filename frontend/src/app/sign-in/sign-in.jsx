@@ -94,7 +94,7 @@ const SignIn = () => {
   };
 
   return (
-    <div className="container" onClick={handleExit}>
+    <div className="container">
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={handleExit}>
           ×

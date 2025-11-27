@@ -7,8 +7,9 @@ import { useTestEmail } from "../../service/auth/useAuthService";
 import { useAuthRequestPasswordChangeService } from "../../service/auth/useAuthService";
 import { useAuthRequestEmailVerificationService } from "../../service/auth/useAuthService";
 import toast from "react-hot-toast";
+import { ScanSearch, Clock } from "lucide-react";
 
-const Navbarr = ({ onMenuClick, user, isLoaded }) => {
+const Navbarr = ({ onTabChange, user, isLoaded }) => {
   const { logOut } = useAuthActions();
   const navigate = useNavigate();
   const testEmail = useTestEmail();
@@ -96,13 +97,19 @@ const Navbarr = ({ onMenuClick, user, isLoaded }) => {
 
   return (
     <nav className="header">
-      <button className="menu-btn" onClick={onMenuClick}>
-        <div className="menu-icon"></div>
-      </button>
-      <h1 className="header-title">INGRIDIENTS DETECTION</h1>
-      <div className="header-tabs">
-        <button className="tab">Food detection</button>
-        <button className="tab">History</button>
+      <div className="header-title-btn">
+        <h1 className="header-title">INGRIDIENTS DETECTION</h1>
+        <div className="header-tabs">
+          <button className="tab" onClick={() => onTabChange("Detect")}>
+            <ScanSearch className="tab-icon" size={16} />
+            <span className="tab-text">Detection</span>
+          </button>
+
+          <button className="tab" onClick={() => onTabChange("History")}>
+            <Clock className="tab-icon" size={16} />
+            <span className="tab-text">History</span>
+          </button>
+        </div>
       </div>
       <div className="header-actions">
         {!isLoaded ? (

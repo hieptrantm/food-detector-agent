@@ -2,48 +2,67 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import Navbarr from './components/navbar/navbar';
 import Sidebar from './components/sidebar/sidebar';
-import ImageUpload from './components/imageUpload/imageUpload';
+import History  from './components/history/history.jsx';
+import Detect from './components/detect/detect.jsx';
 import { useAuth } from './service/auth/useAuth.js';
 import { Toaster } from "react-hot-toast";
+import {Menu} from "lucide-react"
 
 function App() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mainContent, setMainContent] = useState("Detect")
 
   const { user, isLoaded } = useAuth();
   
-  const checkMobile = () => {
-    const mobile = window.innerWidth <= 768;
-    setIsMobile(mobile);
-    if (mobile) {
-      setSidebarCollapsed(false);
-    }
-  };
-  
   useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+    
+    handleResize(); // Check on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [isLoaded]);
+  const onTabChange = (tab) => {
+    setMainContent(tab)
+  }
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+  const renderScreen = () => {
+    switch (mainContent) {
+      case "Detect":
+        return <Detect />;
+      case "History":
+        return <History />;
+      default:
+        return <Detect />;
+    }
   };
 
   return (
     <div className="app-container">
       <Toaster position='bottom-right' />
       {/* Header */}
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-
+      <div>
+        <Sidebar  sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      </div>
       {/* Main Content */}
-      <div className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>
-        <Navbarr user={user} isLoaded={isLoaded}/>
-        <div className="content-area">
-          <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
-          THE RECIPES ARE HERE 
+      <div className='main-content'> 
+        <div className='navbar'>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="menu-button"
+          >
+            <Menu size={20} />
+          </button>
+            <Navbarr onTabChange={onTabChange} user={user} isLoaded={isLoaded}/>
+        </div>
+        <div>
+          {renderScreen()}
         </div>
       </div>
     </div>
