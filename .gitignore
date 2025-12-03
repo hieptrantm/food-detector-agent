@@ -53,3 +53,6 @@ _pycache_
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+_pycache_/
+__pycache__/

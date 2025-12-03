@@ -5,6 +5,12 @@ from typing import Optional
 import httpx
 import random
 
+import logging
+# Create a logger
+logger = logging.getLogger(__name__)
+
+logger.info("Starting AI Service...")
+
 app = FastAPI(title="AI Service")
 
 app.add_middleware(
@@ -16,7 +22,6 @@ app.add_middleware(
 )
 
 AUTH_SERVICE_URL = "http://auth-service:8000"
-# AUTH_SERVICE_URL = "http://localhost:8000"  # For local testing
 
 class DetectionRequest(BaseModel):
     text: str
@@ -48,9 +53,14 @@ async def verify_token(authorization: str = Header(None)):
 def root():
     return {"service": "ai-service", "status": "running"}
 
-@app.post("/ai/detect", response_model=DetectionResponse)
-async def detect_spam(
+# Import and include upload router
+from app.controllers.ai_controller import router as upload_router
+app.include_router(upload_router)
+
+@app.post("/ai/ingredient-detect", response_model=DetectionResponse)
+async def detect_ingredient(
     request: DetectionRequest,
+    img: Optional[bytes] = None,
     user=Depends(verify_token)
 ):
     spam_keywords = ["spam", "free", "win", "click here", "congratulations"]
@@ -68,7 +78,10 @@ async def detect_spam(
         "confidence": confidence,
         "category": category
     }
+    
+from fastapi.responses import FileResponse
+
 
 @app.get("/ai/health")
-def health():
-    return {"status": "healthy", "user": "verified"}
+def health(user=Depends(verify_token)):
+    return {"status": "healthy", "user": user}
