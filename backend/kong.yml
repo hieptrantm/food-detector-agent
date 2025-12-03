@@ -16,5 +16,5 @@ services:
     routes:
       - name: ai-route
         paths:
-          - /ai
+          - /ai/upload
         strip_path: false
