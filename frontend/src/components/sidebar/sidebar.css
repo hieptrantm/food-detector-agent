@@ -181,19 +181,23 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: 2.5rem 1rem;
+  padding: 2.5rem 2.5rem;
   color: white;
   font-size: 0.875rem;
   font-weight: 500;
+  width: 100%;
 }
 
 .loading-spinner {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 40px;
+  height: 40px;
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 @keyframes spin {

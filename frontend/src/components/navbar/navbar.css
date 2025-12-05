@@ -25,12 +25,14 @@
 .header-title-btn {
   display: flex;
   flex-direction: row;
+  gap: 4px;
 }
 
 .header-title {
   font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: 0.5px;
+  width: fit-content;
 }
 
 .header-actions {
@@ -113,7 +115,7 @@
 .dropdown-content {
   position: absolute;
   top: 100%;
-  left: 0;
+  left: -120px;
   background: white;
   min-width: 280px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -225,6 +227,14 @@
     display: inline;
   }
 
+  .user-icon {
+    display: inline;
+  }
+
+  .logout-icon {
+    display: inline;
+  }
+
   /* Avatar smaller */
   .user-avatar {
     width: 34px;
@@ -239,8 +249,10 @@
 
   /* Dropdown content smaller */
   .dropdown-content {
-    min-width: 240px;
-    padding: 16px;
+    left: auto;
+    right: -70px;
+    min-width: 260px;
+    padding: 18px;
   }
 
   .user-container h2 {

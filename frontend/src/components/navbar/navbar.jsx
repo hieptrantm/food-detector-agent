@@ -7,7 +7,7 @@ import { useTestEmail } from "../../service/auth/useAuthService";
 import { useAuthRequestPasswordChangeService } from "../../service/auth/useAuthService";
 import { useAuthRequestEmailVerificationService } from "../../service/auth/useAuthService";
 import toast from "react-hot-toast";
-import { ScanSearch, Clock } from "lucide-react";
+import { ScanSearch, Clock, User, LogOut } from "lucide-react";
 
 const Navbarr = ({ onTabChange, user, isLoaded }) => {
   const { logOut } = useAuthActions();
@@ -117,10 +117,9 @@ const Navbarr = ({ onTabChange, user, isLoaded }) => {
         ) : user ? (
           <>
             <div className="dropdown">
-              <button className="header-btn user-btn">
-                <span className="user-name">
-                  Xin chào, {user.username || user.email}
-                </span>
+              <button className="tab">
+                <User className="user-icon" size={16} />
+                <span className="tab-text">{user.username || user.email}</span>
               </button>
 
               <div className="dropdown-content">
@@ -177,16 +176,17 @@ const Navbarr = ({ onTabChange, user, isLoaded }) => {
                 </div>
               </div>
             </div>
-            <button className="header-btn logout-btn" onClick={handleLogout}>
-              Đăng xuất
+            <button className="tab" onClick={handleLogout}>
+              <LogOut className="logout-icon" size={16} />
+              <span className="tab-text">Đăng xuất</span>
             </button>
-            |
+            {/* |
             <button
               className="header-btn test-email-btn"
               onClick={handleTestEmail}
             >
               Test Email
-            </button>
+            </button> */}
           </>
         ) : (
           <>

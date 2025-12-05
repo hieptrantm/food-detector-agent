@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./user-detail.css";
 import { useAuthGetMeService } from "../../service/auth/useAuthService.js";
+import toast from "react-hot-toast";
 
 export default function UserDetailPage() {
   const [user, setUser] = useState(null);
@@ -35,7 +36,7 @@ export default function UserDetailPage() {
     });
 
     if (res.ok) {
-      alert("Verification email sent!");
+      toast.success("Verification email sent!");
     }
   };
 

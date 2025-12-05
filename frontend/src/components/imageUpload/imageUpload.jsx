@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
-import { useUploadImageService } from '../../service/ai/useUpload';
-import '../imageUpload/image.css';
+import { useState } from "react";
+import { useUploadImageService } from "../../service/ai/useUpload";
+import toast from "react-hot-toast";
+import "../imageUpload/image.css";
 
 const ImageUpload = ({ image, onImageChange }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const uploadImageService = useUploadImageService();
-  
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -24,20 +25,20 @@ const ImageUpload = ({ image, onImageChange }) => {
   };
   const handleSendClick = async () => {
     if (!selectedFile) {
-      alert('Please select an image first.');
+      toast.error("Please select an image first.");
       return;
-    };
+    }
     try {
       setIsUploading(true);
       const result = await uploadImageService(selectedFile);
-      console.log('Upload successful:',  result);
-      alert('Image uploaded successfully!');
+      console.log("Upload successful:", result);
+      toast.success("Image uploaded successfully!");
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload image: ' + error.message);
+      console.error("Upload failed:", error);
+      toast.error("Failed to upload image: " + error.message);
     } finally {
       setIsUploading(false);
-    };
+    }
   };
   return (
     <div className="image-upload-container">
@@ -62,11 +63,12 @@ const ImageUpload = ({ image, onImageChange }) => {
         )}
       </label>
       <div className="analyze-button-container">
-        <button 
-          className="analyze-btn" 
-          onClick={handleSendClick} 
-          disabled={isUploading}>
-          {isUploading ? 'Uploading...' : 'SEND'}
+        <button
+          className="analyze-btn"
+          onClick={handleSendClick}
+          disabled={isUploading}
+        >
+          {isUploading ? "Uploading..." : "SEND"}
         </button>
       </div>
     </div>

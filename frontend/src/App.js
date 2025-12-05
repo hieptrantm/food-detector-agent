@@ -12,9 +12,6 @@ function App() {
   const [mainContent, setMainContent] = useState("Detect")
 
   const { user, isLoaded } = useAuth();
-
-  console.log("User in App.js:", user);
-  console.log("user id", user?.id);
   
   useEffect(() => {
     const handleResize = () => {
