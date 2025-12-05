@@ -16,3 +16,4 @@ class User(Base):
     last_login = Column(TIMESTAMP, nullable=True)
 
     providers = relationship("AuthProvider", back_populates="user", cascade="all, delete")
+    detects = relationship("Detect", backref="user", cascade="all, delete-orphan")

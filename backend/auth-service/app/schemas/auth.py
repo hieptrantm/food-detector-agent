@@ -23,6 +23,7 @@ class RegisterRequest(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
+    id: str
     username: str
     email: str
     email_verified: bool

@@ -1,12 +1,67 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useGetDetectsByDate } from "../../service/user/useDetectService";
 import "./history.css";
 
-const History = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 7, 1));
+const History = ({ userId }) => {
+  const navigate = useNavigate();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [expandedDay, setExpandedDay] = useState(null);
+  const getUserDetects = useGetDetectsByDate();
+  const [requests, setRequests] = useState({});
 
-  const requests = {
+  const encodeId = (id) => {
+    const SECRET = 12345;
+    return (id ^ SECRET).toString(36);
+  };
+
+  const handleDetectionClick = (detectId) => {
+    const encodedId = encodeId(detectId);
+    navigate(`/detection/${encodedId}`);
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const monthsAgo = new Date(currentDate);
+      monthsAgo.setMonth(currentDate.getMonth() - 2);
+
+      const monthsAhead = new Date(currentDate);
+      monthsAhead.setMonth(currentDate.getMonth() + 2);
+
+      const fetch_requests = await getUserDetects(
+        userId,
+        monthsAgo.toISOString().split("T")[0],
+        monthsAhead.toISOString().split("T")[0],
+        0,
+        1000
+      );
+
+      // ✅ GROUP BY DATE HERE
+      const grouped = {};
+
+      fetch_requests.detects.forEach((item) => {
+        const date = new Date(item.created_at);
+        const key = `${date.getFullYear()}-${
+          date.getMonth() + 1
+        }-${date.getDate()}`;
+
+        if (!grouped[key]) {
+          grouped[key] = [];
+        }
+
+        grouped[key].push(item);
+      });
+
+      setRequests(grouped);
+
+      console.log("✅ Grouped Requests:", grouped);
+    };
+
+    fetchData();
+  }, [currentDate, userId]);
+
+  const demo_requests = {
     "2025-8-1": [
       { time: "10:24", title: "Chicken" },
       { time: "10:40", title: "Beef" },
@@ -65,6 +120,8 @@ const History = () => {
     const dayRequests = requests[dateKey] || [];
     if (dayRequests.length === 0) return null;
 
+    console.log("Rendering requests for", dateKey, dayRequests);
+
     const maxVisible = isExpanded ? dayRequests.length : 3;
     const visibleRequests = dayRequests.slice(0, maxVisible);
     const hasMore = dayRequests.length > maxVisible;
@@ -73,7 +130,12 @@ const History = () => {
       <div className={`requests-container ${isExpanded ? "expanded" : ""}`}>
         {visibleRequests.map((req, idx) => (
           <div key={idx} className="request-item">
-            {req.time}: {req.title}
+            <button
+              onClick={() => handleDetectionClick(req.id)}
+              className="request-button"
+            >
+              {req.created_at} - {req.recommendation}
+            </button>
           </div>
         ))}
         {hasMore && !isExpanded && (

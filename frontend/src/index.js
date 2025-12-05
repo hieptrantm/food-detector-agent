@@ -11,10 +11,13 @@ import GoogleAuthProvider from './service/auth/googleProvider';
 import SetPassword from './app/set-password/set-password';
 import VerifyEmail from './app/verify-email/verify-email';
 import ForgotPassword from './app/forgot-password/forgot-password'
+import DetectionDetail from './app/detect-detail/detect-detail';
+import { Toaster } from 'react-hot-toast';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
+    <Toaster position='bottom-right' />
     <AuthProvider>
       <GoogleAuthProvider>
         <Router>
@@ -26,6 +29,7 @@ root.render(
             <Route path="/set-password" element={<SetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path='/forgot-password' element={<ForgotPassword />} />
+            <Route path='/detection/:encodedId' element={<DetectionDetail />} />
             <Route path="*" element={<h1>404 Not Found</h1>} />
           </Routes>
         </Router>

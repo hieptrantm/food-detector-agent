@@ -4,7 +4,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 
 from app.config import CORS_ORIGINS, DATABASE_URL
-from app.controllers.auth_controller import router
+from app.controllers.auth_controller import auth_router
+from app.controllers.detect_controller import detect_router
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -22,4 +23,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+app.include_router(auth_router)
+app.include_router(detect_router)

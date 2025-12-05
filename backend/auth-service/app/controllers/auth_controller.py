@@ -15,13 +15,13 @@ from app.config import GOOGLE_CLIENT_ID, SECRET_KEY
 if not GOOGLE_CLIENT_ID:
     print("GOOGLE_CLIENT_ID not loaded, check config import or config file")
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.get("/")
+@auth_router.get("/")
 def root():
     return {"service": "auth-service", "status": "running"}
 
-@router.post("/login", response_model=TokenResponse)
+@auth_router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     if request.provider == "email":
         # Find user with email provider
@@ -84,7 +84,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "token_type": "bearer"
     }
 
-@router.get("/verify")
+@auth_router.get("/verify")
 def verify_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
@@ -94,7 +94,7 @@ def verify_token(token: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-@router.patch("/verify-email")
+@auth_router.patch("/verify-email")
 def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
@@ -127,7 +127,7 @@ def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
         "user": {"username": user.username, "email": user.email, "email_verified": user.email_verified}
     }
 
-@router.post("/send-verification")
+@auth_router.post("/send-verification")
 def send_verification(request: SendVerificationRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
@@ -141,7 +141,7 @@ def send_verification(request: SendVerificationRequest, db: Session = Depends(ge
         raise HTTPException(status_code=500, detail="Failed to send verification email")
     return {"message": "Verification email sent successfully"}
 
-@router.post("/register", response_model=TokenResponse)
+@auth_router.post("/register", response_model=TokenResponse)
 def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == request.email).first()
     if existing_user:
@@ -175,7 +175,7 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
         "token_type": "bearer"
     }
 
-@router.post("/refresh", response_model=TokenResponse)
+@auth_router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.refresh_token, SECRET_KEY, algorithms="HS256")
@@ -199,7 +199,7 @@ async def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
         "token_type": "bearer"
     }
 
-@router.get("/me", response_model=UserResponse)
+@auth_router.get("/me", response_model=UserResponse)
 async def get_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user:
@@ -210,6 +210,7 @@ async def get_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
     providers = [ap.provider for ap in auth_providers]
     
     return {
+        "id": str(db_user.id),
         "username": db_user.username,
         "email": db_user.email,
         "email_verified": db_user.email_verified,
@@ -218,11 +219,11 @@ async def get_me(user=Depends(get_current_user), db: Session = Depends(get_db)):
         "has_password": db_user.password_hash is not None
     }
 
-@router.post("/logout")
+@auth_router.post("/logout")
 async def logout():
     return {"message": "Logged out successfully"}
 
-@router.post("/google/login", response_model=TokenResponse)
+@auth_router.post("/google/login", response_model=TokenResponse)
 async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
     try:
         idinfo = id_token.verify_oauth2_token(request.id_token, requests.Request(), GOOGLE_CLIENT_ID)
@@ -298,7 +299,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
-@router.post("/request-set-password-email")
+@auth_router.post("/request-set-password-email")
 async def request_set_password_email(current_user: User = Depends(get_current_user)):
     if current_user.password_hash:
         raise HTTPException(status_code=400, detail="User already has a password. Use change-password endpoint instead.")
@@ -309,7 +310,7 @@ async def request_set_password_email(current_user: User = Depends(get_current_us
         raise HTTPException(status_code=500, detail="Failed to send set password email")
     return {"message": "Set password email sent successfully"}
 
-@router.patch("/set-password")
+@auth_router.patch("/set-password")
 async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
@@ -348,7 +349,7 @@ async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db
     db.commit()
     return {"message": "Password set successfully. You can now login with email and password.", "has_password": True}
 
-@router.patch("/change-password")
+@auth_router.patch("/change-password")
 async def change_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(request.token, SECRET_KEY, algorithms=["HS256"])
@@ -370,7 +371,7 @@ async def change_password(request: SetPasswordRequest, db: Session = Depends(get
     db.commit()
     return {"message": "Password changed successfully. You can now login again"}
 
-@router.post("/forgot-password")
+@auth_router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
     if user and user.password_hash:
@@ -378,7 +379,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         send_reset_password_email(user.email, user.username, token)
     return {"message": "If an account exists with this email, a password reset link has been sent."}
 
-@router.post("/test-email")
+@auth_router.post("/test-email")
 def test_email(request: TestEmailRequest):
     email_sent = send_test_email(request.email, request.username, "test-token")
     if not email_sent:

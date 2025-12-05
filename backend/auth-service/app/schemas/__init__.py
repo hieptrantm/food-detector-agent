@@ -11,6 +11,13 @@ from .auth import (
     SetPasswordRequest,
     TestEmailRequest
 )
+from .detect import (
+    GetDetectDetailRequest,
+    GetDetectDetailResponse,
+    CreateDetectRequest,
+    GetDetectsByDateResponse,
+    GetDetectDetailListResponse
+)
 
 __all__ = [
     "LoginRequest",
@@ -23,5 +30,11 @@ __all__ = [
     "SendVerificationRequest",
     "ForgotPasswordRequest",
     "SetPasswordRequest",
-    "TestEmailRequest"
+    "TestEmailRequest",
+    
+    "GetDetectDetailRequest",
+    "GetDetectDetailResponse",
+    "CreateDetectRequest",
+    "GetDetectsByDateResponse",
+    "GetDetectDetailListResponse"
 ]

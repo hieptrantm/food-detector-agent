@@ -5,7 +5,6 @@ import Sidebar from './components/sidebar/sidebar';
 import History  from './components/history/history.jsx';
 import Detect from './components/detect/detect.jsx';
 import { useAuth } from './service/auth/useAuth.js';
-import { Toaster } from "react-hot-toast";
 import {Menu} from "lucide-react"
 
 function App() {
@@ -13,6 +12,9 @@ function App() {
   const [mainContent, setMainContent] = useState("Detect")
 
   const { user, isLoaded } = useAuth();
+
+  console.log("User in App.js:", user);
+  console.log("user id", user?.id);
   
   useEffect(() => {
     const handleResize = () => {
@@ -37,7 +39,9 @@ function App() {
       case "Detect":
         return <Detect />;
       case "History":
-        return <History />;
+        return user?.id
+          ? <History userId={user.id} />
+          : <Detect />;
       default:
         return <Detect />;
     }
@@ -45,10 +49,9 @@ function App() {
 
   return (
     <div className="app-container">
-      <Toaster position='bottom-right' />
       {/* Header */}
       <div>
-        <Sidebar  sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Sidebar  sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} userId={user?.id}/>
       </div>
       {/* Main Content */}
       <div className='main-content'> 
