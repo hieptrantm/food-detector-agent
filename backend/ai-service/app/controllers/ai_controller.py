@@ -4,10 +4,11 @@ import uuid
 from datetime import datetime
 import httpx
 from fastapi.responses import FileResponse
-from inference import get_model
+# from inference import get_model
 import cv2
-import supervision as sv 
+# import supervision as sv 
 import numpy as np
+from roboflow import Roboflow
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,10 +20,14 @@ logger.info(f"Upload directory set to: {UPLOAD_DIR}")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Initial yolo model
-ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "3aXT515V4jLqQU31PvbC")
 if not ROBOFLOW_API_KEY:
     logger.warning("ROBOFLOW_API_KEY not set in environment variables")
-model = get_model(model_id="uet-ingredient-detector-dwfkr/1", api_key=ROBOFLOW_API_KEY)
+
+rf = Roboflow(api_key=ROBOFLOW_API_KEY)
+project = rf.workspace().project("uet-ingredient-detector-dwfkr")
+version = project.version(1)
+model = version.model
 
 # Token verification function (copy from main.py)
 async def verify_token(authorization: str = Header(None)):
@@ -85,6 +90,7 @@ async def upload_image(
     
     # Detect objects using the pre-loaded model
     try:
+        # Decode image from bytes to cv2 format
         nparr = np.frombuffer(content, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
@@ -93,47 +99,61 @@ async def upload_image(
         
         logger.info(f"Image shape: {image.shape}")
         
-        # Run inference
-        results = model.infer(image)[0]
+        # Run prediction using Roboflow model
+        result = model.predict(image, confidence=40, overlap=30)
+        result_json = result.json()
+        logger.info(f"Roboflow result: {result_json}")
         
-        # Load results into supervision Detections
-        detections = sv.Detections.from_inference(results)
-        logger.info(f"Detections: {detections}")
+        # Extract predictions from result
+        predictions = result_json.get('predictions', [])
         
-        # Extract labels and confidences
-        if 'class_name' in detections.data:
-            labels = detections.data['class_name'].tolist() if hasattr(detections.data['class_name'], 'tolist') else list(detections.data['class_name'])
-        else:
-            labels = [f"Object {i}" for i in range(len(detections))]
+        # Prepare detection results
+        detection_results = []
+        for pred in predictions:
+            # Convert center x,y,width,height to x1,y1,x2,y2 format
+            x_center = pred['x']
+            y_center = pred['y']
+            width = pred['width']
+            height = pred['height']
+            
+            x1 = x_center - width / 2
+            y1 = y_center - height / 2
+            x2 = x_center + width / 2
+            y2 = y_center + height / 2
+            
+            detection_results.append({
+                "label": pred['class'],
+                "confidence": float(pred['confidence']),
+                "bbox": [x1, y1, x2, y2]
+            })
         
-        confidences = detections.confidence.tolist() if detections.confidence is not None else []
-        bboxes = detections.xyxy if detections.xyxy is not None else []
+        logger.info(f"Detection results: {detection_results}")
         
-        # Create annoted image (optional)
-        bounding_box_annotator = sv.BoxAnnotator()
-        label_annotator = sv.LabelAnnotator()
-        
-        annotated_image = bounding_box_annotator.annotate(
-            scene=image.copy(), detections=detections)
-        annotated_image = label_annotator.annotate(
-            scene=annotated_image, detections=detections)
+        # Draw bounding boxes on image
+        annotated_image = image.copy()
+        for pred in predictions:
+            x_center = int(pred['x'])
+            y_center = int(pred['y'])
+            width = int(pred['width'])
+            height = int(pred['height'])
+            
+            x1 = int(x_center - width / 2)
+            y1 = int(y_center - height / 2)
+            x2 = int(x_center + width / 2)
+            y2 = int(y_center + height / 2)
+            
+            # Draw rectangle
+            cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            
+            # Draw label with confidence
+            label_text = f"{pred['class']}: {pred['confidence']:.2f}"
+            cv2.putText(annotated_image, label_text, (x1, y1 - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Save annotated image
         annotated_file_name = f"annotated_{file_name}"
         annotated_file_path = os.path.join(UPLOAD_DIR, annotated_file_name)
         cv2.imwrite(annotated_file_path, annotated_image)
-        
-        # Prepare detection results
-        detection_results = []
-        for i, label in enumerate(labels):
-            bbox = bboxes[i].tolist() if i < len(bboxes) and hasattr(bboxes[i], 'tolist') else []
-            detection_results.append({
-                "label": label,
-                "confidence": float(confidences[i]) if i < len(confidences) else 0.0,
-                "bbox": bbox
-            })
-            
-        logger.info(f"Detection results: {detection_results}")
 
     except Exception as e:
         logger.error(f"Error during detection: {str(e)}")
