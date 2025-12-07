@@ -23,7 +23,7 @@
 }
 
 .btn-back:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #6b3fa0 100%);
   transform: translateX(-5px);
 }
 

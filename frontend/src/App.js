@@ -6,6 +6,7 @@ import History  from './components/history/history.jsx';
 import Detect from './components/detect/detect.jsx';
 import { useAuth } from './service/auth/useAuth.js';
 import {Menu} from "lucide-react"
+import toast from 'react-hot-toast';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -28,19 +29,22 @@ function App() {
   }, []);
 
   const onTabChange = (tab) => {
+    if (!user) {
+      toast.error("Please log in to access this feature.");
+    }
     setMainContent(tab)
   }
 
   const renderScreen = () => {
     switch (mainContent) {
       case "Detect":
-        return <Detect />;
+        return <Detect userId={user?.id} />;
       case "History":
         return user?.id
           ? <History userId={user.id} />
-          : <Detect />;
+          : <Detect userId={user?.id} />;
       default:
-        return <Detect />;
+        return <Detect userId={user?.id} />;
     }
   };
 
