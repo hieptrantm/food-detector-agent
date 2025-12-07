@@ -1,5 +1,5 @@
 import "./detect.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ImageUpload from "../imageUpload/imageUpload";
 import { ChefHat } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,14 +8,36 @@ const Detect = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [backendInfo, setBackendInfo] = useState("");
   const [recommendation, setRecommendation] = useState("");
+  const [detectedIngredients, setDetectedIngredients] = useState([]);
 
   const handleCookForMe = () => {
     console.log("Cook something for me clicked!");
   };
 
+  useEffect(() => {
+    if (detectedIngredients.length > 0) {
+      const counts = detectedIngredients.reduce((acc, item) => {
+        acc[item] = (acc[item] || 0) + 1;
+        return acc;
+      }, {});
+
+      const info =
+        "Detected ingredients: " +
+        Object.entries(counts)
+          .map(([key, value]) => `${key} (${value})`)
+          .join(", ");
+
+      setBackendInfo(info);
+    }
+  }, [detectedIngredients]);
+
   return (
     <div className="detect">
-      <ImageUpload image={uploadedImage} onImageChange={setUploadedImage} />
+      <ImageUpload
+        image={uploadedImage}
+        onImageChange={setUploadedImage}
+        setDetectedIngredients={setDetectedIngredients}
+      />
 
       <div className="info-section">
         <div className="info-row">
@@ -33,13 +55,13 @@ const Detect = () => {
           </button>
         </div>
 
-        <label className="recommendation-label">Recommendation</label>
+        <label className="recommendation-label">Recommendations</label>
 
         <textarea
           className="recommendation-field"
           value={recommendation}
           onChange={(e) => setRecommendation(e.target.value)}
-          placeholder="Recommendation will appear here"
+          placeholder="Recommendations will appear here"
           readOnly
           rows={4}
         />

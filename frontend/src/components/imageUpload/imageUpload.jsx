@@ -3,19 +3,19 @@
 import { useState } from "react";
 import { useUploadImageService } from "../../service/ai/useUpload";
 import toast from "react-hot-toast";
-import "../imageUpload/image.css";
+import "./image.css";
 
-const ImageUpload = ({ image, onImageChange }) => {
+const ImageUpload = ({ image, onImageChange, setDetectedIngredients }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [detections, setDetections] = useState([]);
   const uploadImageService = useUploadImageService();
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // save selected file to state
+      setDetections([]);
       setSelectedFile(file);
-      // use for preview
       const reader = new FileReader();
       reader.onloadend = () => {
         onImageChange(reader.result);
@@ -23,6 +23,7 @@ const ImageUpload = ({ image, onImageChange }) => {
       reader.readAsDataURL(file);
     }
   };
+
   const handleSendClick = async () => {
     if (!selectedFile) {
       toast.error("Please select an image first.");
@@ -32,6 +33,14 @@ const ImageUpload = ({ image, onImageChange }) => {
       setIsUploading(true);
       const result = await uploadImageService(selectedFile);
       console.log("Upload successful:", result);
+
+      // Store detections from server response
+      if (result.detections) {
+        setDetections(result.detections);
+        const ingredients = result.detections.map((det) => det.label);
+        setDetectedIngredients(ingredients);
+      }
+
       toast.success("Image uploaded successfully!");
     } catch (error) {
       console.error("Upload failed:", error);
@@ -40,6 +49,7 @@ const ImageUpload = ({ image, onImageChange }) => {
       setIsUploading(false);
     }
   };
+
   return (
     <div className="image-upload-container">
       <input
@@ -51,7 +61,33 @@ const ImageUpload = ({ image, onImageChange }) => {
       />
       <label htmlFor="image-input" className="image-upload-area">
         {image ? (
-          <img src={image} alt="Uploaded" className="uploaded-image" />
+          <div className="image-container">
+            <img src={image} alt="Uploaded" className="uploaded-image" />
+            {/* Render bounding boxes */}
+            {detections.map((detection, index) => {
+              const [x1, y1, x2, y2] = detection.bbox;
+              const width = x2 - x1;
+              const height = y2 - y1;
+
+              return (
+                <div
+                  key={index}
+                  className="bounding-box"
+                  style={{
+                    left: `${x1}px`,
+                    top: `${y1}px`,
+                    width: `${width}px`,
+                    height: `${height}px`,
+                  }}
+                >
+                  <span className="detection-label">
+                    {detection.label} ({Math.round(detection.confidence * 100)}
+                    %)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="upload-placeholder">
             <p>INSERT OR TAKE AN IMAGE</p>
