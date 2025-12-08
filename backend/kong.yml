@@ -19,3 +19,11 @@ services:
         paths:
           - /ai/upload
         strip_path: false
+
+  - name: agent-service
+    url: http://agent-service:8000
+    routes:
+      - name: agent-route
+        paths:
+          - /agent
+        strip_path: false

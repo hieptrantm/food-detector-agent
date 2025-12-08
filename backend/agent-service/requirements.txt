@@ -1,0 +1,17 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.7.4
+python-dotenv==1.0.0
+httpx==0.26.0
+pyjwt==2.8.0
+sendgrid==6.11.0
+
+# LangGraph and LangChain
+langgraph==0.2.55
+langchain==0.3.13
+langchain-core==0.3.29
+langchain-together==0.3.1
+
+# OpenAI
+openai
+together
