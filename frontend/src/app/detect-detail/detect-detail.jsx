@@ -120,9 +120,14 @@ const DetectionDetail = () => {
               {detection.detected_ingredients &&
               detection.detected_ingredients.length > 0 ? (
                 <div className="ingredients-grid">
-                  {detection.detected_ingredients.map((ingredient, index) => (
+                  {Object.entries(
+                    detection.detected_ingredients.reduce((acc, ingredient) => {
+                      acc[ingredient] = (acc[ingredient] || 0) + 1;
+                      return acc;
+                    }, {})
+                  ).map(([ingredient, count], index) => (
                     <div key={index} className="ingredient-tag">
-                      {ingredient}
+                      {ingredient} {count > 1 && `(${count})`}
                     </div>
                   ))}
                 </div>
