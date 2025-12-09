@@ -38,6 +38,9 @@ Với mỗi món ăn, hãy cung cấp:
 4. Thời gian nấu ước tính
 5. Nguyên liệu cần thêm (nếu có)
 
+Yêu cầu:
+1. Chỉ trả về theo định dạng JSON body như dưới, không kèm mô tả hay lời giải thích nào khác.
+
 Format trả về dưới dạng JSON:
 {{
     "dishes": [
@@ -55,6 +58,10 @@ GENERATE_RECIPE_PROMPT = """Người dùng đã chọn món: {dish_name}
 
 Danh sách nguyên liệu có sẵn:
 {ingredients}
+
+Danh sách nguyên liệu cần thêm: 
+{additional_ingredients}
+
 
 Hãy tạo hướng dẫn chi tiết để nấu món này, bao gồm:
 

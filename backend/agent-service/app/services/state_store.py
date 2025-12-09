@@ -18,12 +18,15 @@ class StateStore:
     
     def _get_file_path(self, request_id: str) -> str:
         """Get file path for request state"""
-        return os.path.join(self.storage_dir, f"{request_id}.json")
+        # return os.path.join(self.storage_dir, f"{request_id}.json")
+        return f"C:\\Users\\Home\\OneDrive - vnu.edu.vn\\Desktop\\ComputerVisi\\test\\food-detector-agent\\backend\\agent-service\\app\\services\\{request_id}.json"
+        
     
     def save_state(self, state: AgentState) -> bool:
         """Save agent state to file"""
         try:
             file_path = self._get_file_path(state["request_id"])
+            logger.info(f"Saving state to {file_path}")
             state["updated_at"] = datetime.utcnow().isoformat()
             
             with open(file_path, 'w', encoding='utf-8') as f:

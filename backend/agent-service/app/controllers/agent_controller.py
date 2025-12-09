@@ -80,7 +80,7 @@ async def start_cooking(
         user = {
             "id": "test-user-123",
             "email": "hiepchip318@gmail.com",  # Your email for testing
-            "username": "Test User"
+            "username": "hiepchip"
         }
         
         logger.info(f"Starting cooking session for user {user.get('id')}")
@@ -132,17 +132,28 @@ async def select_dish(
     
     This is called when user clicks a dish selection button in the email
     """
+    # Verify token
+    payload = verify_selection_token(token)
+    request_id = payload.get("request_id")
+    user_id = payload.get("user_id")
+    
+    request_id = "6191e2ee-fe40-4ba2-a1c2-2590361c4e9"
+    
+    logger.info(f"Dish selection token verified for request {request_id}, user {user_id}")
     try:
-        # Verify token
-        payload = verify_selection_token(token)
-        request_id = payload.get("request_id")
-        user_id = payload.get("user_id")
-        
+        # Mock payload for testing
+        # payload = {
+        #     "request_id": "test-request-123",
+        #     "user_id": "test-user-123"
+        # }
         logger.info(f"Dish selection for request {request_id}, dish index {dish_index}")
         
         # Load state
         state = state_store.load_state(request_id)
+        logger.debug(f"Loaded state for request {request_id}: {state}")
         
+        # logger.info(f"Previous state loaded for request {request_id}: {state}")
+        logger.info(f"Current state stage: {state['stage'] if state else 'N/A'}")
         if not state:
             raise HTTPException(status_code=404, detail="Request not found or expired")
         
@@ -155,11 +166,14 @@ async def select_dish(
         
         selected_dish = state["suggested_dishes"][dish_index]
         selected_dish_name = selected_dish["name"]
+        additional_ingredients = selected_dish.get("additional_ingredients", [])
         
         logger.info(f"User selected dish: {selected_dish_name}")
+        logger.info(f"Additional ingredients needed: {additional_ingredients}")
         
         # Continue agent session
-        result_state = await continue_cooking_session(request_id, selected_dish_name)
+        result_state = await continue_cooking_session(request_id, selected_dish_name, additional_ingredients)
+        logger.info(f"Resulting state after selection: {result_state}")
         
         if result_state["error"]:
             raise HTTPException(status_code=500, detail=result_state["error"])

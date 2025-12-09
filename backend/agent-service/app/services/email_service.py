@@ -54,6 +54,7 @@ def send_dish_selection_email(
         logger.warning("SENDGRID_API_KEY not set, skipping email")
         return False
     
+    
     # Generate token for selection
     token = generate_selection_token(request_id, user_id)
     
@@ -76,6 +77,8 @@ def send_dish_selection_email(
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
     for i, dish in enumerate(dishes):
         selection_url = f"{backend_url}/agent/select-dish?token={token}&dish_index={i}"
+        # selection_url = f"{backend_url}/select-dish?token={token}&dish_index={i}"
+        
         selection_buttons += f"""
         <a href="{selection_url}" class="button"> {dish['name']}</a>
         """

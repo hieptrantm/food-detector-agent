@@ -88,22 +88,75 @@ def suggest_dishes_node(state: AgentState) -> AgentState:
         response = llm.invoke(messages)
         content = response.content
         
-        logger.info(f"[{state['request_id']}] LLM response: {content}...")
+        # logger.info(f"[{state['request_id']}] LLM raw response: {content[:500]}...")
         
-        # Parse JSON response
+        # Validate response is not empty
+        if not content or not content.strip():
+            raise ValueError("LLM returned empty response")
+        
+        # Extract JSON from response
+        json_content = content.strip()
+        
         # Try to extract JSON from markdown code block if present
-        try:
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-            else:
-                content = content.strip()
-        except Exception as e:
-            logger.warning(f"[{state['request_id']}] Error extracting JSON from markdown: {e}")
+        if "```json" in json_content:
+            try:
+                # Find the JSON block between ```json and ```
+                start_idx = json_content.find("```json") + 7
+                end_idx = json_content.find("```", start_idx)
+                if end_idx != -1:
+                    json_content = json_content[start_idx:end_idx].strip()
+                else:
+                    logger.warning(f"[{state['request_id']}] Could not find closing ``` for JSON block")
+            except Exception as e:
+                logger.warning(f"[{state['request_id']}] Error extracting JSON from ```json block: {e}")
+        elif "```" in json_content:
+            try:
+                # Generic code block
+                start_idx = json_content.find("```") + 3
+                end_idx = json_content.find("```", start_idx)
+                if end_idx != -1:
+                    json_content = json_content[start_idx:end_idx].strip()
+                else:
+                    logger.warning(f"[{state['request_id']}] Could not find closing ``` for code block")
+            except Exception as e:
+                logger.warning(f"[{state['request_id']}] Error extracting JSON from ``` block: {e}")
+        else:
+            # Try to find JSON object by looking for { and }
+            try:
+                start_idx = json_content.find("{")
+                end_idx = json_content.rfind("}")
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    json_content = json_content[start_idx:end_idx + 1].strip()
+            except Exception as e:
+                logger.warning(f"[{state['request_id']}] Error extracting JSON by braces: {e}")
         
-        dishes_data = json.loads(content)
+        # Validate extracted content is not empty
+        if not json_content:
+            logger.error(f"[{state['request_id']}] Extracted JSON content is empty. Original response: {content}")
+            raise ValueError("Failed to extract JSON from LLM response")
+        
+        # logger.info(f"[{state['request_id']}] Extracted JSON: {json_content[:300]}...")
+        
+        # Parse JSON with better error handling
+        try:
+            dishes_data = json.loads(json_content)
+        except json.JSONDecodeError as e:
+            logger.error(f"[{state['request_id']}] JSON decode error: {e}")
+            logger.error(f"[{state['request_id']}] Content that failed to parse: {json_content}")
+            raise ValueError(f"Invalid JSON response from LLM: {str(e)}")
+        
+        # Validate JSON structure
+        if not isinstance(dishes_data, dict):
+            raise ValueError(f"Expected JSON object, got {type(dishes_data)}")
+        
         dishes = dishes_data.get("dishes", [])
+        
+        if not isinstance(dishes, list):
+            raise ValueError(f"Expected 'dishes' to be a list, got {type(dishes)}")
+        
+        if len(dishes) == 0:
+            logger.warning(f"[{state['request_id']}] No dishes found in response")
+            raise ValueError("LLM did not suggest any dishes")
         
         logger.info(f"[{state['request_id']}] Parsed {len(dishes)} dishes")
         logger.info(f"[{state['request_id']}] Dishes: {dishes}")
@@ -167,8 +220,11 @@ def generate_recipe_node(state: AgentState) -> AgentState:
         # Create prompt
         prompt = GENERATE_RECIPE_PROMPT.format(
             dish_name=state["selected_dish"],
-            ingredients=ingredients_str
+            ingredients=ingredients_str,
+            additional_ingredients=state["additional_ingredients"],
         )
+        
+        logger.info(f"[{state['request_id']}] Recipe generation prompt: {prompt}...")
         
         # Call LLM
         messages = [
@@ -179,11 +235,12 @@ def generate_recipe_node(state: AgentState) -> AgentState:
         response = llm.invoke(messages)
         recipe_text = response.content
         
+        print(f"[{state['request_id']}] LLM raw recipe response:\n {str(recipe_text)}...")
         logger.info(f"[{state['request_id']}] Generated recipe: {len(recipe_text)} chars")
         
         # Parse recipe (we'll store as structured data)
         # For simplicity, we'll parse the markdown-style response
-        recipe = parse_recipe_text(recipe_text, state["selected_dish"])
+        recipe = parse_recipe_text(recipe_text, state["selected_dish"], state["ingredient_names"], state["additional_ingredients"])
         
         state["recipe"] = recipe
         state["stage"] = "completed"
@@ -228,10 +285,9 @@ def send_recipe_email_node(state: AgentState) -> AgentState:
     
     return state
 
-def parse_recipe_text(recipe_text: str, dish_name: str) -> dict:
+def parse_recipe_text(recipe_text: str, dish_name: str, ingredient_names: list, additional_ingredients: list) -> dict:
     """Parse recipe text into structured format"""
-    # This is a simplified parser
-    # In production, you might want to use LLM with structured output
+    import re
     
     recipe = {
         "dish_name": dish_name,
@@ -242,13 +298,25 @@ def parse_recipe_text(recipe_text: str, dish_name: str) -> dict:
         "preparation": [],
         "steps": [],
         "tips": [],
-        "nutrition": {},
-        "time": {},
-        "servings": 2
+        "nutrition": {
+            "calories": "",
+            "protein": "",
+            "carbohydrate": "",
+            "fat": "",
+            "fiber": "",
+            "vitamins": ""
+        },
+        "time": {
+            "prep": "",
+            "cook": "",
+            "total": ""
+        },
+        "servings": 2,
+        "raw_text": recipe_text
     }
     
-    # Simple parsing logic
-    lines = recipe_text.split('\n')
+    # Split text into lines for processing
+    lines = recipe_text.split('\\n')
     current_section = None
     
     for line in lines:
@@ -256,35 +324,144 @@ def parse_recipe_text(recipe_text: str, dish_name: str) -> dict:
         if not line:
             continue
         
-        # Detect sections
-        if "nguyên liệu" in line.lower():
+        # Detect section headers (must match exactly)
+        if line == "**Nguyên liệu cần thiết:**":
+            logger.info("Parsing ingredients section")
             current_section = "ingredients"
-        elif "chuẩn bị" in line.lower():
+            continue
+        elif line == "**Chuẩn bị:**":
+            logger.info("Parsing preparation section")
             current_section = "preparation"
-        elif "bước" in line.lower() or "các bước" in line.lower():
+            continue
+        elif line == "**Các bước nấu:**":
+            logger.info("Parsing steps section")
             current_section = "steps"
-        elif "mẹo" in line.lower() or "lưu ý" in line.lower():
+            continue
+        elif line == "**Mẹo và lưu ý:**":
+            logger.info("Parsing tips section")
             current_section = "tips"
-        elif "dinh dưỡng" in line.lower():
+            continue
+        elif "**Phân tích dinh dưỡng" in line:
+            logger.info("Parsing nutrition section")
             current_section = "nutrition"
-        elif "thời gian" in line.lower():
+            continue
+        elif line == "**Thời gian:**":
+            logger.info("Parsing time section")
             current_section = "time"
-        elif "khẩu phần" in line.lower():
-            current_section = "servings"
-        elif line.startswith(('-', '•', '*', '1.', '2.', '3.')):
-            # Add to current section
-            clean_line = line.lstrip('-•*0123456789. ')
-            
-            if current_section == "preparation":
-                recipe["preparation"].append(clean_line)
-            elif current_section == "steps":
-                recipe["steps"].append(clean_line)
-            elif current_section == "tips":
-                recipe["tips"].append(clean_line)
+            continue
+        elif line.startswith("**Số khẩu phần:**"):
+            logger.info("Parsing servings section")
+            # Extract servings number
+            servings_match = re.search(r'(\d+)[-\s]*(\d*)\s*người', line)
+            if servings_match:
+                # Take first number if range (e.g., "4-6 người" -> 4)
+                recipe["servings"] = int(servings_match.group(1))
+            current_section = None
+            continue
+        
+        # Skip other header lines
+        if line.startswith('**') and line.endswith('**'):
+            continue
+        
+        # Process content based on current section
+        if current_section == "ingredients":
+            # Parse ingredients: - Item (quantity) *(status)*
+            if line.startswith('-'):
+                clean_line = line.lstrip('-').strip()
+                
+                # Check status in parentheses
+                if "*(đã có sẵn)*" in clean_line or "*đã có sẵn*" in clean_line:
+                    # Remove status markers
+                    ingredient = re.sub(r'\*\([^)]*\)\*', '', clean_line).strip()
+                    ingredient = re.sub(r'\*[^*]*\*', '', ingredient).strip()
+                    recipe["ingredients"]["available"].append(ingredient)
+                elif "*(cần mua thêm)*" in clean_line or "*cần mua thêm*" in clean_line:
+                    # Remove status markers
+                    ingredient = re.sub(r'\*\([^)]*\)\*', '', clean_line).strip()
+                    ingredient = re.sub(r'\*[^*]*\*', '', ingredient).strip()
+                    recipe["ingredients"]["needed"].append(ingredient)
+                else:
+                    # No status marker, just clean up
+                    ingredient = re.sub(r'\*\([^)]*\)\*', '', clean_line).strip()
+                    ingredient = re.sub(r'\*[^*]*\*', '', ingredient).strip()
+                    # Check if in detected ingredients
+                    ingredient_base = ingredient.split('(')[0].strip()
+                    if any(ing in ingredient_base for ing in ingredient_names):
+                        recipe["ingredients"]["available"].append(ingredient)
+                    else:
+                        recipe["ingredients"]["needed"].append(ingredient)
+        
+        elif current_section == "preparation":
+            # Parse preparation steps: - text or + text
+            if line.startswith(('-', '+')):
+                clean_line = line.lstrip('-+').strip()
+                if clean_line:
+                    recipe["preparation"].append(clean_line)
+        
+        elif current_section == "steps":
+            # Parse main steps: - **Bước X: Title**
+            if line.startswith('-') and '**Bước' in line:
+                # Extract step without leading dash and format markers
+                clean_line = line.lstrip('-').strip()
+                clean_line = clean_line.replace('**', '').strip()
+                if clean_line:
+                    recipe["steps"].append(clean_line)
+            # Parse sub-steps: + text
+            elif line.startswith('+'):
+                clean_line = line.lstrip('+').strip()
+                if clean_line and recipe["steps"]:
+                    # Add as sub-step with indent
+                    recipe["steps"].append("  " + clean_line)
+        
+        elif current_section == "tips":
+            # Parse tips: - text
+            if line.startswith('-'):
+                clean_line = line.lstrip('-').strip()
+                if clean_line:
+                    recipe["tips"].append(clean_line)
+        
+        elif current_section == "nutrition":
+            # Parse nutrition info: - Key: value
+            if line.startswith('-') and ':' in line:
+                clean_line = line.lstrip('-').strip()
+                parts = clean_line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip().lower()
+                    value = parts[1].strip()
+                    
+                    if "calo" in key or "lượng calo" in key:
+                        recipe["nutrition"]["calories"] = value
+                    elif "protein" in key:
+                        recipe["nutrition"]["protein"] = value
+                    elif "carbohydrate" in key:
+                        recipe["nutrition"]["carbohydrate"] = value
+                    elif "fat" in key:
+                        recipe["nutrition"]["fat"] = value
+                    elif "chất xơ" in key:
+                        recipe["nutrition"]["fiber"] = value
+                    elif "vitamin" in key or "khoáng chất" in key:
+                        recipe["nutrition"]["vitamins"] = value
+        
+        elif current_section == "time":
+            # Parse time info: - Key: value
+            if line.startswith('-') and ':' in line:
+                clean_line = line.lstrip('-').strip()
+                parts = clean_line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip().lower()
+                    value = parts[1].strip()
+                    
+                    if "chuẩn bị" in key:
+                        recipe["time"]["prep"] = value
+                    elif "nấu" in key and "tổng" not in key:
+                        recipe["time"]["cook"] = value
+                    elif "tổng" in key:
+                        recipe["time"]["total"] = value
     
-    # If parsing failed, store raw text
-    if not recipe["steps"]:
-        recipe["raw_text"] = recipe_text
+    # Fallback: if no ingredients parsed, use the provided lists
+    if not recipe["ingredients"]["available"] and not recipe["ingredients"]["needed"]:
+        recipe["ingredients"]["available"] = ingredient_names
+        recipe["ingredients"]["needed"] = additional_ingredients
     
     return recipe
 
@@ -364,28 +541,60 @@ async def start_cooking_session(
     
     return result
 
-async def continue_cooking_session(request_id: str, selected_dish_name: str) -> AgentState:
+async def continue_cooking_session(request_id: str, selected_dish_name: str, additional_ingredients: list) -> AgentState:
     """Continue session after user selects a dish"""
-    
-    # Load state
-    state = state_store.load_state(request_id)
-    
-    if not state:
-        raise ValueError(f"Request {request_id} not found")
-    
-    if state["stage"] != "waiting_selection":
-        raise ValueError(f"Request {request_id} is not waiting for selection")
-    
-    # Update state with selection
-    state["selected_dish"] = selected_dish_name
-    state["stage"] = "generating_recipe"
-    state["awaiting_human_feedback"] = False
-    state["messages"].append(f"Người dùng đã chọn món: {selected_dish_name}")
-    
-    # Continue agent execution
-    result = await cooking_agent.ainvoke(state)
-    
-    # Save final state
-    state_store.save_state(result)
-    
-    return result
+    try:
+        # Load state
+        logger.info(f"Loading state for request {request_id}")
+        state = state_store.load_state(request_id)
+        
+        if not state:
+            logger.error(f"Request {request_id} not found in state store")
+            raise ValueError(f"Request {request_id} not found")
+        
+        logger.info(f"[{request_id}] Current state stage: {state.get('stage')}, awaiting_feedback: {state.get('awaiting_human_feedback')}")
+        
+        if state["stage"] != "waiting_selection":
+            logger.error(f"[{request_id}] Invalid stage: {state['stage']}, expected 'waiting_selection'")
+            raise ValueError(f"Request {request_id} is not waiting for selection (current stage: {state['stage']})")
+        
+        # Update state with selection
+        state["selected_dish"] = selected_dish_name
+        state["additional_ingredients"] = additional_ingredients
+        state["awaiting_human_feedback"] = False
+        state["updated_at"] = datetime.utcnow().isoformat()
+        state["messages"].append(f"Người dùng đã chọn món: {selected_dish_name}")
+        
+        logger.info(f"[{request_id}] Updated state - selected_dish: {selected_dish_name}")
+        
+        # Save state before continuing (important for persistence)
+        state_store.save_state(state)
+        logger.info(f"[{request_id}] State saved with selected dish")
+        
+        # Execute remaining nodes manually (generate_recipe -> send_recipe_email)
+        # Instead of invoking the whole agent which starts from entry point
+        
+        logger.info(f"[{request_id}] Executing generate_recipe node...")
+        state = generate_recipe_node(state)
+        
+        if state.get("error"):
+            logger.error(f"[{request_id}] Error in generate_recipe: {state['error']}")
+            state_store.save_state(state)
+            return state
+        
+        logger.info(f"[{request_id}] Recipe generated successfully, stage: {state['stage']}")
+        
+        logger.info(f"[{request_id}] Executing send_recipe_email node...")
+        state = send_recipe_email_node(state)
+        
+        logger.info(f"[{request_id}] Final stage: {state['stage']}")
+        
+        # Save final state
+        state_store.save_state(state)
+        logger.info(f"[{request_id}] Final state saved")
+        
+        return state
+        
+    except Exception as e:
+        logger.error(f"[{request_id}] Error continuing cooking session: {e}", exc_info=True)
+        raise e
