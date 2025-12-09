@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from app.config import SENDGRID_API_KEY, SECRET_KEY
 
-FROM_EMAIL = "quochaitnpl04@gmail.com"
+FROM_EMAIL =  os.getenv("FROM_EMAIL", "uetfoody@gmail.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 def generate_verification_token_email(email: str):
