@@ -98,7 +98,7 @@ const Navbarr = ({ onTabChange, user, isLoaded }) => {
   return (
     <nav className="header">
       <div className="header-title-btn">
-        <h1 className="header-title">INGRIDIENTS DETECTION</h1>
+        <h1 className="header-title">UET Smart Foody</h1>
         <div className="header-tabs">
           <button className="tab" onClick={() => onTabChange("Detect")}>
             <ScanSearch className="tab-icon" size={16} />
