@@ -99,8 +99,7 @@ const ImageUpload = ({
       // Store detections from server response
       if (result.detections) {
         setDetections(result.detections);
-        const ingredients = result.detections.map((det) => det.label);
-        setDetectedIngredients(ingredients);
+        setDetectedIngredients(result.detections);
       }
 
       toast.success("Image uploaded successfully!");

@@ -1,54 +1,52 @@
 import "./detect.css";
 import { useEffect, useState } from "react";
 import ImageUpload from "../imageUpload/imageUpload";
+import { useStartAgentService } from "../../service/agent/useAgent.js";
 import { ChefHat } from "lucide-react";
-import { useCreateDetect } from "../../service/user/useDetectService";
 import toast from "react-hot-toast";
 
-const Detect = ({ userId }) => {
+const Detect = ({ user }) => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [backendInfo, setBackendInfo] = useState("");
-  const [recommendation, setRecommendation] = useState("");
   const [detectedIngredients, setDetectedIngredients] = useState([]);
-  const createDetect = useCreateDetect();
+  const [isUploading, setIsUploading] = useState(false);
+  const startAgentService = useStartAgentService();
 
   const handleCookForMe = async () => {
+    if (!user?.email || !user?.email_verified) {
+      toast.error("You must be logged in and have a verified email.");
+      return;
+    }
+
+    if (detectedIngredients.length === 0) {
+      toast.error("No detected ingredients to cook with.");
+      return;
+    }
     try {
-      // const recommendation = await fetchRecommendation(detectedIngredients);
-      // if (!recommendation) {
-      //   toast.error("No recommendation received.");
-      //   throw new Error("No recommendation received.");
-      // }
-      // setRecommendation(recommendation);
-      const cleanBase64 = uploadedImage.replace(
-        /^data:image\/[a-zA-Z]+;base64,/,
-        ""
-      );
-
-      const data = {
-        user_id: userId,
-        image_base64: cleanBase64,
-        image_mime_type: "image/jpeg",
+      setIsUploading(true);
+      const response = await startAgentService({
         detected_ingredients: detectedIngredients,
-        recommendation: recommendation,
-      };
-      const response = await createDetect(data);
+      });
 
-      if (!response) {
-        toast.error("Failed to save history.");
-        throw new Error("Failed to save history.");
+      if (!response && !response.ok) {
+        toast.error("Failed to start cooking agent.");
+        throw new Error("Failed to start cooking agent.");
       }
-      console.log("Detect saved:", response);
-      toast.success("History saved successfully!");
+
+      toast.success("Cooking agent started! Check your email soon.");
     } catch (error) {
-      toast.error("Failed to fetch recommendations.");
+      toast.error("Failed to start cooking agent.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
   useEffect(() => {
     if (detectedIngredients.length > 0) {
+      // Count occurrences by label only
       const counts = detectedIngredients.reduce((acc, item) => {
-        acc[item] = (acc[item] || 0) + 1;
+        const label = item.label;
+        acc[label] = (acc[label] || 0) + 1;
         return acc;
       }, {});
 
@@ -57,6 +55,7 @@ const Detect = ({ userId }) => {
         Object.entries(counts)
           .map(([key, value]) => `${key} (${value})`)
           .join(", ");
+
       console.log("detected ingredients: ", detectedIngredients);
       setBackendInfo(info);
     }
@@ -65,7 +64,7 @@ const Detect = ({ userId }) => {
   return (
     <div className="detect">
       <ImageUpload
-        userId={userId}
+        userId={user?.id}
         image={uploadedImage}
         onImageChange={setUploadedImage}
         setDetectedIngredients={setDetectedIngredients}
@@ -77,26 +76,21 @@ const Detect = ({ userId }) => {
             className="info-field"
             value={backendInfo}
             onChange={(e) => setBackendInfo(e.target.value)}
-            placeholder="Backend info will display here"
+            placeholder="Detected ingredients will appear here..."
             readOnly
             rows={3}
           />
-          <button className="cook-button" onClick={handleCookForMe}>
+          <button
+            className="cook-button"
+            onClick={handleCookForMe}
+            disabled={isUploading}
+          >
             <ChefHat size={20} />
-            <span className="cook-button-text">Cook something for me!</span>
+            <span className="cook-button-text">
+              {isUploading ? "Cooking..." : "Cook something for me!"}
+            </span>
           </button>
         </div>
-
-        <label className="recommendation-label">Recommendations</label>
-
-        <textarea
-          className="recommendation-field"
-          value={recommendation}
-          onChange={(e) => setRecommendation(e.target.value)}
-          placeholder="Recommendations will appear here"
-          readOnly
-          rows={4}
-        />
       </div>
     </div>
   );

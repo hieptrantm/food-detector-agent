@@ -11,7 +11,7 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY", "hiep-tran-thanh-mieu")
 
 # Email Configuration
-FROM_EMAIL = os.getenv("FROM_EMAIL", "quochaitnpl04@gmail.com")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "uetfoody@gmail.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Service URLs

@@ -52,20 +52,21 @@ async def verify_token(authorization: str = Header(None)):
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(
-                f"{AUTH_SERVICE_URL}/auth/verify",
-                params={"token": token}
+            user = await client.get(
+                f"{AUTH_SERVICE_URL}/auth/me",
+                headers={"Authorization": f"Bearer {token}"}
             )
-            if response.status_code != 200:
-                raise HTTPException(status_code=401, detail="Invalid token")
-            return response.json()
+
+            if user.status_code != 200:
+                raise HTTPException(status_code=401, detail="User not found")
+            return user.json()
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="Auth service unavailable")
 
 @router.post("/start", response_model=StartCookingResponse)
 async def start_cooking(
     request: StartCookingRequest,
-    # user=Depends(verify_token)  # Temporarily disabled for testing
+    user=Depends(verify_token)  # Temporarily disabled for testing
 ):
     """
     Start a cooking session with detected ingredients
@@ -76,13 +77,6 @@ async def start_cooking(
     3. Wait for user to select a dish via email
     """
     try:
-        # Mock user for testing
-        user = {
-            "id": "test-user-123",
-            "email": "hiepchip318@gmail.com",  # Your email for testing
-            "username": "hiepchip"
-        }
-        
         logger.info(f"Starting cooking session for user {user.get('id')}")
         logger.info(f"Detected ingredients: {[ing.label for ing in request.detected_ingredients]}")
         
