@@ -28,10 +28,14 @@ from config import (
 logger = logging.getLogger(__name__)
 
 # Database setup
-DATABASE_URL = "postgresql://postgres:postgres@postgres:5432/authdb"
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+try:
+    DATABASE_URL = "postgresql://postgres:postgres@postgres:5432/authdb"
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base = declarative_base()
+except Exception as e:
+    logger.error(f"Error setting up database: {e}")
+    raise e
 
 class Detect(Base):
     __tablename__ = "detects"
@@ -226,6 +230,75 @@ def send_selection_email_node(state: AgentState) -> AgentState:
     
     return state
 
+def extract_json_from_response(content: str, request_id: str) -> dict:
+    """
+    Extract JSON from LLM response, handling multiple formats:
+    -
+json ...
+    -
+bash ...
+    -
+...
+    - Raw JSON with { }
+    """
+    if not content or not content.strip():
+        raise ValueError("Empty response content")
+    
+    json_content = content.strip()
+    
+    # Try to extract from code blocks (in order of preference)
+    extraction_patterns = [
+        ("```json", "```"),
+        ("```bash", "```"), 
+        ("```", "```"),     
+    ]
+    
+    for start_marker, end_marker in extraction_patterns:
+        if start_marker in json_content:
+            try:
+                start_idx = json_content.find(start_marker) + len(start_marker)
+                end_idx = json_content.find(end_marker, start_idx)
+                
+                if end_idx != -1:
+                    extracted = json_content[start_idx:end_idx].strip()
+                    logger.info(f"[{request_id}] Extracted JSON from {start_marker} block")
+                    
+                    # Try to parse and return immediately if successful
+                    try:
+                        return json.loads(extracted)
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"[{request_id}] Failed to parse extracted {start_marker} content: {e}")
+                        # Continue to next pattern
+                        continue
+            except Exception as e:
+                logger.warning(f"[{request_id}] Error extracting {start_marker} block: {e}")
+                continue
+    
+    # Try to find JSON by braces { }
+    try:
+        start_idx = json_content.find("{")
+        end_idx = json_content.rfind("}")
+        
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            extracted = json_content[start_idx:end_idx + 1].strip()
+            logger.info(f"[{request_id}] Extracted JSON by braces")
+            
+            try:
+                return json.loads(extracted)
+            except json.JSONDecodeError as e:
+                logger.warning(f"[{request_id}] Failed to parse brace-extracted content: {e}")
+    except Exception as e:
+        logger.warning(f"[{request_id}] Error extracting JSON by braces: {e}")
+    
+    # If all extraction attempts fail, try to parse the whole content
+    try:
+        logger.info(f"[{request_id}] Attempting to parse entire content as JSON")
+        return json.loads(json_content)
+    except json.JSONDecodeError as e:
+        logger.error(f"[{request_id}] JSON decode error: {e}")
+        logger.error(f"[{request_id}] Content that failed to parse (first 500 chars): {json_content[:500]}")
+        raise ValueError(f"Failed to extract valid JSON from response: {str(e)}")
+
 def generate_recipe_node(state: AgentState) -> AgentState:
     """Node: Generate detailed recipe for selected dish"""
     logger.info(f"[{state['request_id']}] Generating recipe for {state['selected_dish']}...")
@@ -259,7 +332,7 @@ def generate_recipe_node(state: AgentState) -> AgentState:
         
         # Parse recipe (we'll store as structured data)
         # For simplicity, we'll parse the markdown-style response
-        recipe_json = json.loads(recipe_text)
+        recipe_json = extract_json_from_response(recipe_text, state["request_id"])
         recipe = parse_recipe_json(recipe_json, state["selected_dish"], state["ingredient_names"], state["additional_ingredients"])
         
         # Save to database

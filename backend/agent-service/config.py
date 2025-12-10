@@ -87,7 +87,7 @@ recipe = {{
 }}
 
 
-Hãy trả lời đúng định dạng JSON trên, không kèm mô tả hay lời giải thích nào khác.
+Bạn **phải** trả lời đúng định dạng JSON trên, không kèm mô tả hay lời giải thích nào khác.
 Hãy trả lời chi tiết và dễ hiểu, phù hợp cho người mới học nấu ăn.
 """
 

@@ -37,7 +37,6 @@ CREATE TABLE auth_providers (
 CREATE TABLE detects (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  image BYTEA NOT NULL,
   image_mime_type VARCHAR(50),
   detected_ingredients TEXT[],
   recommendation TEXT,

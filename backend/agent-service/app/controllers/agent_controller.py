@@ -77,13 +77,14 @@ async def start_cooking(
     3. Wait for user to select a dish via email
     """
     try:
-        logger.info(f"Starting cooking session for user {user.get('id')}")
-        logger.info(f"Detected ingredients: {[ing.label for ing in request.detected_ingredients]}")
-        
         # Extract user info
         user_id = user.get("id")
         user_email = user.get("email")
         username = user.get("username", "User")
+        
+        user_id = "123"
+        user_email = "hiepchip318@gmail.com"
+        username = "chiphiep"
         
         
         if not user_email:
@@ -130,6 +131,11 @@ async def select_dish(
     payload = verify_selection_token(token)
     request_id = payload.get("request_id")
     user_id = payload.get("user_id")
+    
+    payload = {
+        "request_id": "12321321",
+        "user_id": 123
+    }
     
     logger.info(f"Dish selection token verified for request {request_id}, user {user_id}")
     try:
