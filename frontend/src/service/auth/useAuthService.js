@@ -183,10 +183,9 @@ export function useAuthChangePasswordService() {
 }
 
 export function useAuthRequestPasswordChangeService() {
-  return useCallback(async (data) => {
-    const res = await fetchWithAuth(`/auth/request-set-password-email`, {
+  return useCallback(async () => {
+    const res = await fetchWithAuth(`/auth/request-change-password-email`, {
       method: "POST",
-      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Set password failed");
     return res;

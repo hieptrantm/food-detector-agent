@@ -310,6 +310,14 @@ async def request_set_password_email(current_user: User = Depends(get_current_us
         raise HTTPException(status_code=500, detail="Failed to send set password email")
     return {"message": "Set password email sent successfully"}
 
+@auth_router.post("/request-change-password-email")
+async def request_change_password_email(current_user: User = Depends(get_current_user)):
+    token = generate_reset_password_token(current_user.email)
+    email_sent = send_change_password_email(current_user.email, current_user.username, token)
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send change password email")
+    return {"message": "Change password email sent successfully"}
+
 @auth_router.patch("/set-password")
 async def set_password(request: SetPasswordRequest, db: Session = Depends(get_db)):
     try:

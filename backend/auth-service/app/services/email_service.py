@@ -75,7 +75,7 @@ def send_change_password_email(email: str, username: str, token: str):
         print("Warning: SENDGRID_API_KEY not set, skipping email")
         return False
     
-    change_password_link = f"{FRONTEND_URL}/change-password?token={token}"
+    change_password_link = f"{FRONTEND_URL}/forgot-password?token={token}"
     
     message = Mail(
         from_email=FROM_EMAIL,
