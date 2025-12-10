@@ -18,8 +18,8 @@ class StateStore:
     
     def _get_file_path(self, request_id: str) -> str:
         """Get file path for request state"""
-        # return os.path.join(self.storage_dir, f"{request_id}.json")
-        return f"C:\\Users\\Home\\OneDrive - vnu.edu.vn\\Desktop\\ComputerVisi\\test\\food-detector-agent\\backend\\agent-service\\app\\services\\{request_id}.json"
+        return os.path.join(self.storage_dir, f"{request_id}.json")
+        # return f"C:\\Users\\Home\\OneDrive - vnu.edu.vn\\Desktop\\ComputerVisi\\test\\food-detector-agent\\backend\\agent-service\\app\\services\\{request_id}.json"
         
     
     def save_state(self, state: AgentState) -> bool:

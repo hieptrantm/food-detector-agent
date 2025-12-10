@@ -7,6 +7,9 @@ import uuid
 from langgraph.graph import StateGraph, END
 from langchain_together import ChatTogether
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from sqlalchemy import create_engine, Column, Integer, String, Text, TIMESTAMP, ForeignKey, func
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.models.state import AgentState, Dish, Ingredient
 from app.services.email_service import (
@@ -23,6 +26,22 @@ from config import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Database setup
+DATABASE_URL = "postgresql://postgres:postgres@postgres:5432/authdb"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Detect(Base):
+    __tablename__ = "detects"
+    __table_args__ = {'extend_existing': True}
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer)  # Bỏ ForeignKey constraint
+    detected_ingredients = Column(ARRAY(Text))
+    recommendation = Column(Text)
+    created_at = Column(TIMESTAMP, server_default=func.now())
 
 try:
     # Initialize LLM with Together AI
@@ -240,7 +259,25 @@ def generate_recipe_node(state: AgentState) -> AgentState:
         
         # Parse recipe (we'll store as structured data)
         # For simplicity, we'll parse the markdown-style response
-        recipe = parse_recipe_text(recipe_text, state["selected_dish"], state["ingredient_names"], state["additional_ingredients"])
+        recipe_json = json.loads(recipe_text)
+        recipe = parse_recipe_json(recipe_json, state["selected_dish"], state["ingredient_names"], state["additional_ingredients"])
+        
+        # Save to database
+        try:
+            db = SessionLocal()
+            detect_record = Detect(
+                user_id=int(state["user_id"]),
+                detected_ingredients=state["ingredient_names"],
+                recommendation=json.dumps(recipe, ensure_ascii=False)
+            )
+            db.add(detect_record)
+            db.commit()
+            db.refresh(detect_record)
+            logger.info(f"[{state['request_id']}] Saved recipe to database with ID: {detect_record.id}")
+            db.close()
+        except Exception as db_error:
+            logger.error(f"[{state['request_id']}] Failed to save to database: {db_error}")
+            # Continue even if DB save fails
         
         state["recipe"] = recipe
         state["stage"] = "completed"
@@ -284,6 +321,37 @@ def send_recipe_email_node(state: AgentState) -> AgentState:
         # Don't change stage to error since recipe was generated
     
     return state
+
+def parse_recipe_json(recipe_json: dict, dish_name: str, ingredient_names: list, additional_ingredients: list) -> dict:
+    """Parse recipe from JSON format to structured format"""
+    
+    recipe = {
+        "dish_name": dish_name,
+        "ingredients": {
+            "available": ingredient_names,
+            "needed": additional_ingredients
+        },
+        "preparation": recipe_json.get("preparation", []),
+        "steps": recipe_json.get("steps", []),
+        "tips": recipe_json.get("tips", []),
+        "nutrition": {
+            "calories": recipe_json.get("nutrition", {}).get("calories", ""),
+            "protein": recipe_json.get("nutrition", {}).get("protein", ""),
+            "carbohydrate": recipe_json.get("nutrition", {}).get("carbohydrate", ""),
+            "fat": recipe_json.get("nutrition", {}).get("fat", ""),
+            "fiber": recipe_json.get("nutrition", {}).get("fiber", ""),
+            "vitamins": recipe_json.get("nutrition", {}).get("vitamins", "")
+        },
+        "time": {
+            "prep": recipe_json.get("time", {}).get("prep", ""),
+            "cook": recipe_json.get("time", {}).get("cook", ""),
+            "total": recipe_json.get("time", {}).get("total", "")
+        },
+        "servings": recipe_json.get("servings", 2),
+        "raw_json": recipe_json
+    }
+    
+    return recipe
 
 def parse_recipe_text(recipe_text: str, dish_name: str, ingredient_names: list, additional_ingredients: list) -> dict:
     """Parse recipe text into structured format"""

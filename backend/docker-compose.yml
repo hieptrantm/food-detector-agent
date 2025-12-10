@@ -40,7 +40,7 @@ services:
     build: ./agent-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:8000
-      BACKEND_URL: http://kong:8000
+      BACKEND_URL: http://localhost:8000
     ports:
       - "8003:8000"
     depends_on:

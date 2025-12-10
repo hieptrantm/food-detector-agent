@@ -15,3 +15,7 @@ langchain-together==0.3.1
 # OpenAI
 openai
 together
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23

@@ -131,8 +131,6 @@ async def select_dish(
     request_id = payload.get("request_id")
     user_id = payload.get("user_id")
     
-    request_id = "6191e2ee-fe40-4ba2-a1c2-2590361c4e9"
-    
     logger.info(f"Dish selection token verified for request {request_id}, user {user_id}")
     try:
         # Mock payload for testing

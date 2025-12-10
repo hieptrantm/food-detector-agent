@@ -63,42 +63,33 @@ Danh sách nguyên liệu cần thêm:
 {additional_ingredients}
 
 
-Hãy tạo hướng dẫn chi tiết để nấu món này, bao gồm:
+Hãy tạo hướng dẫn chi tiết để nấu món này, tất cả để vào một đoạn JSON body như sau:
 
-1. **Nguyên liệu cần thiết**:
-   - Liệt kê tất cả nguyên liệu với số lượng cụ thể
-   - Đánh dấu những nguyên liệu đã có sẵn
-   - Đánh dấu những nguyên liệu cần mua thêm
 
-2. **Chuẩn bị**:
-   - Các bước sơ chế nguyên liệu
-   - Công cụ nấu nướng cần thiết
+recipe = {{
+    "preparation": [], // Các bước sơ chế nguyên liệu, công cụ nấu nướng cần thiết
+    "steps": [], // Các bước nấu chi tiết từng bước
+    "tips": [], // Mẹo và lưu ý khi nấu
+    "nutrition": {{ // Phân tích dinh dưỡng cho 1 khẩu phần
+        "calories": "", // Lượng calo
+        "protein": "", // Lượng protein
+        "carbohydrate": "", // Lượng carbohydrate
+        "fat": "", // Lượng chất béo
+        "fiber": "", // Lượng chất xơ
+        "vitamins": "" // Vitamin và khoáng chất nổi bật
+    }},
+    "time": {{ // Thời gian
+        "prep": "", // Thời gian chuẩn bị
+        "cook": "", // Thời gian nấu
+        "total": "" // Tổng thời gian
+    }},
+    "servings": "", // Số khẩu phần
+}}
 
-3. **Các bước nấu** (chi tiết từng bước):
-   - Bước 1: ...
-   - Bước 2: ...
-   - ...
 
-4. **Mẹo và lưu ý**:
-   - Những điểm cần chú ý khi nấu
-   - Cách làm cho món ăn ngon hơn
-
-5. **Phân tích dinh dưỡng** (cho 1 khẩu phần):
-   - Lượng calo: X kcal
-   - Protein: X g
-   - Carbohydrate: X g
-   - Fat: X g
-   - Chất xơ: X g
-   - Vitamin và khoáng chất nổi bật
-
-6. **Thời gian**:
-   - Thời gian chuẩn bị: X phút
-   - Thời gian nấu: X phút
-   - Tổng thời gian: X phút
-
-7. **Số khẩu phần**: X người
-
-Hãy trả lời chi tiết và dễ hiểu, phù hợp cho người mới học nấu ăn."""
+Hãy trả lời đúng định dạng JSON trên, không kèm mô tả hay lời giải thích nào khác.
+Hãy trả lời chi tiết và dễ hiểu, phù hợp cho người mới học nấu ăn.
+"""
 
 EMAIL_DISH_SELECTION_TEMPLATE = """
 <!DOCTYPE html>
@@ -146,7 +137,6 @@ EMAIL_DISH_SELECTION_TEMPLATE = """
         </div>
         <div class="footer">
             <p>Cảm ơn bạn đã sử dụng dịch vụ UET Foody</p>
-            <p>Đây là email tự động, vui lòng không trả lời email này</p>
         </div>
     </div>
 </body>
