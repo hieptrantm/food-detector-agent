@@ -27,14 +27,8 @@ def detect_detail(detect_id: int, db: Session = Depends(get_db)):
 
 @detect_router.post("/detect-detail", response_model=GetDetectDetailResponse)
 def create_detect(request: CreateDetectRequest, db: Session = Depends(get_db)):
-    try:
-        image_bytes = base64.b64decode(request.image_base64)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid base64 image")
-
     detect = Detect(
         user_id=request.user_id,
-        image=image_bytes,
         image_mime_type=request.image_mime_type,
         detected_ingredients=request.detected_ingredients,
         recommendation=request.recommendation,

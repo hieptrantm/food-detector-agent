@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Header, Query
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
+from fastapi.responses import HTMLResponse
 import httpx
 import logging
 
@@ -82,11 +83,6 @@ async def start_cooking(
         user_email = user.get("email")
         username = user.get("username", "User")
         
-        user_id = "123"
-        user_email = "hiepchip318@gmail.com"
-        username = "chiphiep"
-        
-        
         if not user_email:
             raise HTTPException(status_code=400, detail="User email not found")
         
@@ -117,7 +113,7 @@ async def start_cooking(
         logger.error(f"Error starting cooking session: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.get("/select-dish", response_model=DishSelectionResponse)
+@router.get("/select-dish", response_class=HTMLResponse)
 async def select_dish(
     token: str = Query(..., description="Selection token from email"),
     dish_index: int = Query(..., description="Index of selected dish")
@@ -176,11 +172,52 @@ async def select_dish(
         if result_state["error"]:
             raise HTTPException(status_code=500, detail=result_state["error"])
         
-        return DishSelectionResponse(
-            success=True,
-            message=f"Đã chọn món {selected_dish_name}. Hướng dẫn nấu ăn sẽ được gửi qua email trong giây lát.",
-            request_id=request_id
-        )
+        return HTMLResponse(f"""
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+                <meta charset="UTF-8" />
+                <title>Đã Chọn Món</title>
+                <style>
+                    body {{
+                        margin: 0;
+                        padding: 0;
+                        height: 100vh;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        background: #f5f6fa;
+                        font-family: Arial, sans-serif;
+                    }}
+                    .box {{
+                        background: white;
+                        padding: 32px 40px;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+                        text-align: center;
+                        max-width: 400px;
+                    }}
+                    h1 {{
+                        margin: 0 0 12px;
+                        font-size: 24px;
+                        color: #333;
+                    }}
+                    p {{
+                        margin-top: 6px;
+                        color: #555;
+                        font-size: 16px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="box">
+                    <h1>🎉 Đã chọn món!</h1>
+                    <p><b>{selected_dish_name}</b></p>
+                    <p>Hướng dẫn nấu ăn sẽ được gửi qua email trong giây lát.</p>
+                </div>
+            </body>
+            </html>
+        """)
         
     except HTTPException:
         raise

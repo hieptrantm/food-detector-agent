@@ -84,14 +84,16 @@ def send_dish_selection_email(
         """
         
     logger.info(f"Selection buttons HTML: {selection_buttons}")
-    
-    # Format ingredients list
-    ingredients_str = ", ".join(ingredients)
+
+    ingredients_tags_html = "\n".join([ # Dùng \n thay vì chuỗi dài khoảng trắng
+        f'<span class="ingredient-tag">{ingredient.strip()}</span>'
+        for ingredient in ingredients
+    ])
     
     # Render email
     html_content = EMAIL_DISH_SELECTION_TEMPLATE.format(
         username=username,
-        ingredients=ingredients_str,
+        ingredients_tags=ingredients_tags_html,
         dishes_html=dishes_html,
         selection_buttons=selection_buttons
     )
@@ -149,22 +151,23 @@ def format_recipe_html(recipe: dict) -> str:
     """Format recipe data into HTML for email"""
     html = ""
     
-    # Ingredients section
+    # Ingredients section 
     html += '<div class="section">'
     html += '<div class="section-title">📋 Nguyên Liệu</div>'
-    html += '<ul class="ingredient-list">'
+    
+    html += '<div class="ingredient-tags-container">' 
     
     if "ingredients" in recipe and "available" in recipe["ingredients"]:
-        html += '<li class="ingredient-item"><strong>✅ Đã có sẵn:</strong></li>'
+        html += '<p class="ingredient-category-label">✅ Đã có sẵn:</p>'
         for ing in recipe["ingredients"]["available"]:
-            html += f'<li class="ingredient-item">&nbsp;&nbsp;&nbsp;&nbsp;• {ing}</li>'
-    
+            html += f'<span class="ingredient-tag tag-available">{ing}</span>' 
+            
     if "ingredients" in recipe and "needed" in recipe["ingredients"]:
-        html += '<li class="ingredient-item"><strong>🛒 Cần mua thêm:</strong></li>'
+        html += '<p class="ingredient-category-label">🛒 Cần mua thêm:</p>'
         for ing in recipe["ingredients"]["needed"]:
-            html += f'<li class="ingredient-item">&nbsp;&nbsp;&nbsp;&nbsp;• {ing}</li>'
+            html += f'<span class="ingredient-tag tag-needed">{ing}</span>'
     
-    html += '</ul></div>'
+    html += '</div></div>'
     
     # Preparation section
     if "preparation" in recipe and recipe["preparation"]:
@@ -193,7 +196,7 @@ def format_recipe_html(recipe: dict) -> str:
     # Nutrition section
     if "nutrition" in recipe:
         html += '<div class="section">'
-        html += '<div class="section-title">🥗 Thông Tin Dinh Dưỡng (1 khẩu phần)</div>'
+        html += '<div class="section-title">🥗  (1 khẩu phần)</div>'
         html += '<table class="nutrition-table">'
         for key, value in recipe["nutrition"].items():
             html += f'<tr><td><strong>{key}</strong></td><td>{value}</td></tr>'

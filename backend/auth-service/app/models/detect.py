@@ -15,7 +15,6 @@ class Detect(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    image = Column(BYTEA, nullable=False)
     image_mime_type = Column(String(50))
     detected_ingredients = Column(ARRAY(Text))  # TEXT[] in PostgreSQL
     recommendation = Column(Text)

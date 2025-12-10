@@ -105,6 +105,10 @@ EMAIL_DISH_SELECTION_TEMPLATE = """
         .header h1 {{ margin: 0; font-size: 24px; }}
         .content {{ padding: 30px 20px; background-color: #ffffff; }}
         .greeting {{ font-size: 16px; margin-bottom: 20px; }}
+        .ingredients-section {{ margin-bottom: 15px; }}
+        .ingredients-label {{ font-size: 16px; margin-bottom: 10px; color: #333; }}
+        .ingredients-container {{ display: block; width: 100%; box-sizing: border-box; margin-bottom: 18px; padding: 10px 14px; background-color: #eef2ff; border-radius: 10px; border: 1px solid #d8dafe; }}
+        .ingredient-tag {{ display: inline-block; margin: 4px 6px 4px 0; /* Đã thêm margin dưới (4px) để tách các hàng */background-color: #667eea; color: #ffffff; padding: 5px 10px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap; }}
         .dish-card {{ background-color: #f8f9fa; margin: 20px 0; padding: 20px; border-left: 4px solid #667eea; }}
         .dish-name {{ color: #333; font-size: 18px; font-weight: bold; margin-bottom: 10px; }}
         .dish-info {{ font-size: 14px; color: #555; margin: 8px 0; line-height: 1.5; }}
@@ -113,6 +117,17 @@ EMAIL_DISH_SELECTION_TEMPLATE = """
         .button:hover {{ background-color: #5568d3; }}
         .footer {{ padding: 20px; text-align: center; color: #666; font-size: 13px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0; }}
         .footer p {{ margin: 8px 0; }}
+        
+        /* Mobile responsive */
+        @media only screen and (max-width: 600px) {{
+            .container {{ margin: 10px; }}
+            .header {{ padding: 20px 15px; }}
+            .header h1 {{ font-size: 20px; }}
+            .content {{ padding: 20px 15px; }}
+            .ingredients-container {{ padding: 12px; }}
+            .ingredient-tag {{ font-size: 12px; padding: 5px 12px; }}
+            .button {{ display: block; margin: 8px 0; width: 100%; box-sizing: border-box; }}
+        }}
     </style>
 </head>
 <body>
@@ -123,7 +138,12 @@ EMAIL_DISH_SELECTION_TEMPLATE = """
         <div class="content">
             <div class="greeting">
                 <p>Xin chào <strong>{username}</strong>,</p>
-                <p>Dựa trên các nguyên liệu bạn có: <strong>{ingredients}</strong></p>
+                <div class="ingredients-section">
+                    <p class="ingredients-label">Dựa trên các nguyên liệu bạn có:</p>
+                    <div class="ingredients-container">
+                        {ingredients_tags}
+                    </div>
+                </div>
                 <p>Chúng tôi xin gợi ý những món ăn phù hợp dưới đây:</p>
             </div>
             
@@ -162,6 +182,11 @@ EMAIL_RECIPE_TEMPLATE = """
         .nutrition-table tr:nth-child(even) {{ background-color: #f9fafb; }}
         .highlight {{ background-color: #fef3c7; padding: 2px 6px; border-radius: 3px; }}
         .footer {{ text-align: center; padding: 20px; color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; }}
+        .ingredient-tags-container {{ padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; }}
+        .ingredient-category-label {{ font-weight: bold; margin-top: 10px; margin-bottom: 5px; }}
+        .ingredient-tag {{ display: inline-block; padding: 6px 12px; margin: 4px 6px 4px 0; border-radius: 16px; font-size: 13px; white-space: nowrap; font-weight: 500; }}
+        .tag-available {{ background-color: #d4edda; color: #155724; }}
+        .tag-needed {{ background-color: #f8d7da; color: #721c24; }}
     </style>
 </head>
 <body>
